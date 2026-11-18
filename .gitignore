@@ -1,0 +1,19 @@
+# Secrets – never commit
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+key.properties
+secrets/
+.env
+*.secret
+signing/
+
+# Build outputs (release binaries are attached to CI artifacts/releases)
+source/wojan_media_studio/build/
+builds/**/*.apk
+builds/**/*.exe
+builds/**/*.aab
+*.zip
+.dart_tool/
