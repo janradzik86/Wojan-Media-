@@ -130,8 +130,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         await runBusy(context, 'Pakowanie projektu z materiałami…', () => store.exportPackage(p.id, out));
         if (!mounted) return;
         if (isDesktop) {
-          final dest = await FilePicker.platform.saveFile(dialogTitle: 'Zapisz pakiet projektu', fileName: out.split(RegExp(r'[\\/]')).last);
-          if (dest != null) await File(out).copy(dest);
+          final dir = await FilePicker.getDirectoryPath(dialogTitle: 'Folder dla pakietu projektu');
+          if (dir != null) await File(out).copy('$dir${Platform.pathSeparator}${out.split(RegExp(r'[\\/]')).last}');
         } else {
           await SharePlus.instance.share(ShareParams(files: [XFile(out, mimeType: 'application/octet-stream')], subject: p.name));
         }

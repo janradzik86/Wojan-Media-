@@ -1,0 +1,151 @@
+name: Build WoJan Media Studio
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: '3.50.0'
+  APP_DIR: source/wojan_media_studio
+
+jobs:
+  test:
+    name: Engine tests (real FFmpeg)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg libsqlite3-dev fonts-dejavu
+      - name: Analyze
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter pub get && flutter analyze --no-fatal-infos --no-fatal-warnings lib
+      - name: Tests
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter test test/engine --reporter expanded
+
+  android:
+    name: Android APK (release)
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '${{ env.FLUTTER_VERSION }}', channel: stable, cache: true }
+      - name: Restore signing key (from repository secrets)
+        env:
+          KEYSTORE_B64: ${{ secrets.WMS_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > $RUNNER_TEMP/release.jks
+            echo "WMS_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> $GITHUB_ENV
+          else
+            echo "::warning::WMS_KEYSTORE_B64 secret missing – APK will be signed with a throwaway debug key (not for distribution)."
+          fi
+      - name: Build
+        working-directory: ${{ env.APP_DIR }}
+        env:
+          WMS_KEYSTORE_PASSWORD: ${{ secrets.WMS_KEYSTORE_PASSWORD }}
+          WMS_KEY_PASSWORD: ${{ secrets.WMS_KEY_PASSWORD }}
+          WMS_KEY_ALIAS: ${{ secrets.WMS_KEY_ALIAS }}
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //;s/+.*//')
+          flutter build apk --release --target-platform android-arm64,android-arm \
+            --build-number=${{ github.run_number }} \
+            --dart-define=WMS_VERSION=$VERSION \
+            --dart-define=WMS_GOOGLE_SERVER_CLIENT_ID=${{ secrets.WMS_GOOGLE_SERVER_CLIENT_ID }} \
+            --dart-define=WMS_UPDATE_MANIFEST_URL=${{ vars.WMS_UPDATE_MANIFEST_URL }} \
+            --dart-define=WMS_UPDATE_PUBKEY=${{ vars.WMS_UPDATE_PUBKEY }}
+          mkdir -p ../../builds/android
+          cp build/app/outputs/flutter-apk/app-release.apk ../../builds/android/WoJan-Media-Studio-Release.apk
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)/apksigner verify --print-certs ../../builds/android/WoJan-Media-Studio-Release.apk | head -5
+          cd ../../builds/android && sha256sum WoJan-Media-Studio-Release.apk > SHA256SUMS-android.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WoJan-Media-Studio-Android
+          path: builds/android/*
+
+  windows:
+    name: Windows 11 x64 (installer)
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '${{ env.FLUTTER_VERSION }}', channel: stable, cache: true }
+      - name: Build
+        working-directory: ${{ env.APP_DIR }}
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:').Line -replace 'version: ','' -replace '\+.*',''
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          flutter build windows --release --build-number=${{ github.run_number }} `
+            --dart-define=WMS_VERSION=$version `
+            --dart-define=WMS_GOOGLE_DESKTOP_CLIENT_ID=${{ secrets.WMS_GOOGLE_DESKTOP_CLIENT_ID }} `
+            --dart-define=WMS_GOOGLE_DESKTOP_CLIENT_SECRET=${{ secrets.WMS_GOOGLE_DESKTOP_CLIENT_SECRET }} `
+            --dart-define=WMS_UPDATE_MANIFEST_URL=${{ vars.WMS_UPDATE_MANIFEST_URL }} `
+            --dart-define=WMS_UPDATE_PUBKEY=${{ vars.WMS_UPDATE_PUBKEY }}
+          # App-local Visual C++ runtime (redistributable) for clean Windows 11
+          $rel = "build\windows\x64\runner\Release"
+          foreach ($dll in 'msvcp140.dll','msvcp140_1.dll','msvcp140_2.dll','vcruntime140.dll','vcruntime140_1.dll','concrt140.dll') {
+            if (Test-Path "C:\Windows\System32\$dll") { Copy-Item "C:\Windows\System32\$dll" $rel -Force }
+          }
+          Get-ChildItem $rel | Select-Object Name,Length | Format-Table
+      - name: Smoke test (app starts and stays up)
+        shell: pwsh
+        run: |
+          $exe = "${{ env.APP_DIR }}\build\windows\x64\runner\Release\WoJanMediaStudio.exe"
+          $p = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 20
+          if ($p.HasExited) { Write-Error "App exited early with code $($p.ExitCode)"; exit 1 }
+          Write-Host "App running (PID $($p.Id))"; Stop-Process -Id $p.Id -Force
+      - name: Installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$env:APP_VERSION scripts\installer\wojan.iss
+          Compress-Archive -Path "${{ env.APP_DIR }}\build\windows\x64\runner\Release\*" -DestinationPath builds\windows\WoJan-Media-Studio-Portable.zip -Force
+          cd builds\windows
+          Get-FileHash -Algorithm SHA256 WoJan-Media-Studio-Setup.exe, WoJan-Media-Studio-Portable.zip | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Out-File SHA256SUMS-windows.txt -Encoding ascii
+          Get-Content SHA256SUMS-windows.txt
+      - name: Installer silent install test
+        shell: pwsh
+        run: |
+          $p = Start-Process builds\windows\WoJan-Media-Studio-Setup.exe -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/TASKS=desktopicon,assoc' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { exit $p.ExitCode }
+          $exe = "$env:ProgramFiles\WoJan Media Studio\WoJanMediaStudio.exe"
+          if (!(Test-Path $exe)) { Write-Error "not installed"; exit 1 }
+          $a = Start-Process $exe -PassThru; Start-Sleep 15
+          if ($a.HasExited) { Write-Error "installed app exited ($($a.ExitCode))"; exit 1 }
+          Stop-Process -Id $a.Id -Force
+          (Get-ItemProperty 'Registry::HKEY_CLASSES_ROOT\.wojanmedia').'(default)'
+          Write-Host "Installed OK"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WoJan-Media-Studio-Windows
+          path: builds/windows/*
+
+  release:
+    name: Draft GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [android, windows]
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dist, merge-multiple: true }
+      - run: cd dist && cat SHA256SUMS-*.txt > SHA256SUMS.txt && ls -la
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: dist/*

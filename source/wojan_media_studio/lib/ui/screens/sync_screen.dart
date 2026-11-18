@@ -84,7 +84,7 @@ class _SyncScreenState extends State<SyncScreen> {
         Row(children: [
           Expanded(child: Text(folder.isEmpty ? 'Nie wybrano' : folder)),
           TextButton(onPressed: () async {
-            final d = await FilePicker.platform.getDirectoryPath(dialogTitle: 'Folder synchronizacji');
+            final d = await FilePicker.getDirectoryPath(dialogTitle: 'Folder synchronizacji');
             if (d == null) return;
             st.set('syncFolder', '$d/WoJanMediaStudioSync');
             await s.reconfigureSync();

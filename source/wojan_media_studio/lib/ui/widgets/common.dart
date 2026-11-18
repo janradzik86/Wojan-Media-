@@ -39,9 +39,9 @@ Future<String?> promptText(BuildContext ctx, String title, {String initial = '',
 
 /// Picks files with the system picker (Android SAF / Windows dialog).
 Future<List<String>> pickFiles({required List<String> extensions, bool multiple = true, String? dialogTitle}) async {
-  final r = await FilePicker.platform.pickFiles(allowMultiple: multiple, type: FileType.custom, allowedExtensions: extensions, dialogTitle: dialogTitle);
-  if (r == null) return [];
-  return r.files.where((f) => f.path != null).map((f) => f.path!).toList();
+  final r = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: extensions, dialogTitle: dialogTitle);
+  final paths = r.where((f) => f.path != null).map((f) => f.path!).toList();
+  return multiple ? paths : paths.take(1).toList();
 }
 
 const audioExt = ['mp3', 'wav', 'flac', 'aac', 'm4a', 'ogg', 'opus', 'wma', 'aiff', 'amr', 'mka', 'ac3'];

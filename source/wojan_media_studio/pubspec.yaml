@@ -1,5 +1,5 @@
 name: wojan_media_studio
-description: "A new Flutter project."
+description: "WoJan Media Studio – autonomiczne studio multimedialne (audio, wideo, teledyski)."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -58,7 +58,6 @@ dependencies:
   uuid: ^4.6.0
   permission_handler: ^13.0.2
   path: ^1.9.1
-  receive_sharing_intent: ^1.9.0
   ffi: ^2.2.0
 
 dev_dependencies:
@@ -77,6 +76,9 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  assets:
+    - assets/fonts/
+    - assets/branding/
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

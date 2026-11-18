@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "pl.wojan.wojan_media_studio"
+    namespace = "pl.wojan.mediastudio"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -15,11 +15,11 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "pl.wojan.wojan_media_studio"
+        // Stable application id – NEVER change (updates must keep id + signing key).
+        applicationId = "pl.wojan.mediastudio"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
@@ -29,12 +29,33 @@ android {
         versionName = flutter.versionName
     }
 
+    // Release signing: key.properties (local, git-ignored) or CI env vars.
+    val keyProps = java.util.Properties()
+    val keyFile = rootProject.file("key.properties")
+    if (keyFile.exists()) keyFile.inputStream().use { keyProps.load(it) }
+    fun prop(k: String, env: String) = (keyProps.getProperty(k) ?: System.getenv(env))
+    val storePath = prop("storeFile", "WMS_KEYSTORE_PATH")
+    signingConfigs {
+        if (storePath != null) {
+            create("release") {
+                storeFile = file(storePath)
+                storePassword = prop("storePassword", "WMS_KEYSTORE_PASSWORD")
+                keyAlias = prop("keyAlias", "WMS_KEY_ALIAS")
+                keyPassword = prop("keyPassword", "WMS_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (storePath != null) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
+    }
+
+    packaging {
+        jniLibs { useLegacyPackaging = true }
     }
 }
 
@@ -46,4 +67,8 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.17.0")
 }

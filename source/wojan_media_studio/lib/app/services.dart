@@ -24,6 +24,7 @@ import '../engine/video/compiler.dart';
 import '../platform/auth.dart';
 import '../platform/disk.dart';
 import '../platform/kit_runner.dart';
+import '../platform/native.dart';
 import 'l10n.dart';
 
 const appVersion = String.fromEnvironment('WMS_VERSION', defaultValue: '1.0.0');
@@ -188,6 +189,10 @@ class Services {
   Future<SyncReport?> syncNow({bool silent = false}) async {
     final s = sync;
     if (s == null || syncBusy.value) return null;
+    if (settings.get<bool>('wifiOnly') && !await NativeBridge.isUnmeteredNetwork()) {
+      syncStatus.value = 'Oczekuje na Wi-Fi (włączono „tylko Wi-Fi”)';
+      return null;
+    }
     syncBusy.value = true;
     syncStatus.value = 'Synchronizacja…';
     try {

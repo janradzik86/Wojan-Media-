@@ -126,8 +126,9 @@ class _RenderResultScreenState extends State<RenderResultScreen> {
       final uri = await NativeBridge.saveToGallery(widget.path, isAudio ? 'audio/${extOf(widget.path)}' : (widget.path.endsWith('.gif') ? 'image/gif' : 'video/mp4'));
       if (mounted) toast(context, uri == null ? 'Nie udało się zapisać' : 'Zapisano w ${isAudio ? 'Muzyka' : 'Filmy'}/WoJan Media Studio');
     } else {
-      final dest = await FilePicker.platform.saveFile(dialogTitle: 'Zapisz kopię jako', fileName: widget.path.split(RegExp(r'[\\/]')).last);
-      if (dest == null || dest.isEmpty) return;
+      final dir = await FilePicker.getDirectoryPath(dialogTitle: 'Wybierz folder docelowy');
+      if (dir == null || dir.isEmpty) return;
+      final dest = '$dir${Platform.pathSeparator}${widget.path.split(RegExp(r'[\\/]')).last}';
       await File(dest).parent.create(recursive: true);
       await File(widget.path).copy(dest);
       if (mounted) toast(context, 'Zapisano: $dest');
