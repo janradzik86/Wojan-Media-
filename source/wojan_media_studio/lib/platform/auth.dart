@@ -34,8 +34,26 @@ class AuthException implements Exception {
 
 /// Google account session: secure token storage (Android Keystore via
 /// EncryptedSharedPreferences / Windows DPAPI Credential store).
+/// Token store: Android Keystore / Windows DPAPI via flutter_secure_storage.
+/// Linux (developer/test builds only, no keyring daemon) uses memory.
+class _Store {
+  final _secure = const FlutterSecureStorage();
+  final _mem = <String, String>{};
+  bool get _useMem => Platform.isLinux;
+  Future<String?> read({required String key}) async => _useMem ? _mem[key] : _secure.read(key: key);
+  Future<void> write({required String key, required String? value}) async {
+    if (_useMem) {
+      value == null ? _mem.remove(key) : _mem[key] = value;
+    } else {
+      await _secure.write(key: key, value: value);
+    }
+  }
+
+  Future<void> delete({required String key}) async => _useMem ? _mem.remove(key) : _secure.delete(key: key);
+}
+
 class GoogleAuth {
-  final _storage = const FlutterSecureStorage();
+  final _storage = _Store();
   String? email;
   String? _access;
   DateTime? _expiry;

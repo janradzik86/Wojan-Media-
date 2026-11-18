@@ -1,0 +1,50 @@
+   Woah! You appear to be trying to run flutter as root.
+   We strongly recommend running the flutter tool without superuser privileges.
+  /
+📎
+00:00 +0: loading /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart
+00:00 +0: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: (setUpAll)
+00:03 +0: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart: (setUpAll)
+00:03 +1: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart: (setUpAll)
+00:03 +1: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: every mode × sample of styles renders a real file
+01:46 +1: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart: mandatory video scenario: 9:16 music video 1080x1920 with fx, transitions, PL captions
+rendered with libx264 in 102s, duration 16.0
+01:52 +2: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: every mode × sample of styles renders a real file
+02:35 +3: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: every mode × sample of styles renders a real file
+04:43 +4: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart: every vfx, motion and visualizer renders
+04:54 +5: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
+04:54 +6: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
+04:54 +7: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
+04:54 +8: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
+04:57 +9: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
+04:57 +10: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
+04:57 +11: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
+04:57 +12: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
+unhandled error during finalization of test:
+/home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart
+TestDeviceException(Shell subprocess crashed with SIGTERM (-15).)
+#0      FlutterTesterTestDevice.finished (package:flutter_tools/src/test/flutter_tester_device.dart:255:5)
+<asynchronous suspension>
+#1      FlutterTesterTestDevice.kill (package:flutter_tools/src/test/flutter_tester_device.dart:237:5)
+<asynchronous suspension>
+#2      FlutterPlatform._startTest.<anonymous closure> (package:flutter_tools/src/test/flutter_platform.dart:696:9)
+<asynchronous suspension>
+#3      FlutterPlatform._startTest.finalize (package:flutter_tools/src/test/flutter_platform.dart:597:11)
+<asynchronous suspension>
+#4      FlutterPlatform._startTest (package:flutter_tools/src/test/flutter_platform.dart:770:7)
+<asynchronous suspension>
+
+unhandled error during finalization of test:
+/home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart
+TestDeviceException(Shell subprocess crashed with SIGTERM (-15).)
+#0      FlutterTesterTestDevice.finished (package:flutter_tools/src/test/flutter_tester_device.dart:255:5)
+<asynchronous suspension>
+#1      FlutterTesterTestDevice.kill (package:flutter_tools/src/test/flutter_tester_device.dart:237:5)
+<asynchronous suspension>
+#2      FlutterPlatform._startTest.<anonymous closure> (package:flutter_tools/src/test/flutter_platform.dart:696:9)
+<asynchronous suspension>
+#3      FlutterPlatform._startTest.finalize (package:flutter_tools/src/test/flutter_platform.dart:597:11)
+<asynchronous suspension>
+#4      FlutterPlatform._startTest (package:flutter_tools/src/test/flutter_platform.dart:770:7)
+<asynchronous suspension>
+

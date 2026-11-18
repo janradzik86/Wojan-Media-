@@ -54,7 +54,7 @@ class PreviewPlayerState extends State<PreviewPlayer> {
       return Card(child: Padding(padding: const EdgeInsets.all(8), child: _Controls(player: player)));
     }
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      AspectRatio(aspectRatio: widget.aspect, child: Video(controller: controller, controls: NoVideoControls, fill: Colors.black)),
+      Flexible(child: AspectRatio(aspectRatio: widget.aspect, child: Video(controller: controller, controls: NoVideoControls, fill: Colors.black))),
       _Controls(player: player),
     ]);
   }

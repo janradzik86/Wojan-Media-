@@ -277,7 +277,7 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
                   child: Column(children: [
                     _topBar(pro),
                     Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(8), child: preview)),
-                    SizedBox(height: 250, child: timeline),
+                    SizedBox(height: 262, child: timeline),
                   ]),
                 ),
                 const VerticalDivider(width: 1),
@@ -397,7 +397,7 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
       ConstrainedBox(
         constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.5),
         child: AspectRatio(
-          aspectRatio: aspect,
+          aspectRatio: aspect * 0.92,
           child: Stack(children: [
             Positioned.fill(child: previewPath == null ? Container(color: Colors.black, alignment: Alignment.center, child: const Text('Naciśnij „Podgląd”, aby wygenerować rzeczywisty podgląd\n(ten sam silnik co końcowy render, niższa rozdzielczość)', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54))) : PreviewPlayer(key: ValueKey(previewPath), path: previewPath, aspect: aspect)),
             if (safeZones) Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: SafeZonePainter(p.height > p.width)))),
@@ -455,7 +455,7 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
                   ]),
                 ),
                 SizedBox(
-                  height: 86,
+                  height: 80,
                   child: Row(children: [
                     const SizedBox(width: 70, child: Text('Obraz', style: TextStyle(fontSize: 11, color: WmsColors.muted))),
                     Expanded(
@@ -500,7 +500,7 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
                   for (final t in p.audio.tracks)
                     for (final c in t.clips) (c.position, c.end, '${t.name}: ${doc!.assets[c.assetId]?.name ?? ''}', () => setState(() => {selKind = _SelKind.audio, sel = 0}), selKind == _SelKind.audio),
                 ], color: WmsColors.accent),
-                if (starts.isNotEmpty) const SizedBox(height: 4),
+                
               ]),
             ),
           ),

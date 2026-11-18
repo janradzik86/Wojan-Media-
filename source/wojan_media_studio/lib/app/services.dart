@@ -125,7 +125,9 @@ class Services {
     });
     final prof = kv.get('profiles', 'platforms');
     if (prof != null) s.profiles.updateFromJson(jsonEncode(prof));
-    await s.auth.restore();
+    try {
+      await s.auth.restore();
+    } catch (_) {/* secure storage unavailable – stay signed out */}
     await s._setupSync();
     return s;
   }

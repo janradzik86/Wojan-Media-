@@ -229,6 +229,14 @@ class _QuickVideoScreenState extends State<QuickVideoScreen> {
         onStepContinue: () => setState(() => step = (step + 1).clamp(0, steps.length - 1)),
         onStepCancel: () => setState(() => step = (step - 1).clamp(0, steps.length - 1)),
         steps: steps,
+        controlsBuilder: (c, d) => Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Row(children: [
+            if (step < steps.length - 1) FilledButton.tonal(onPressed: d.onStepContinue, child: const Text('Dalej')),
+            const SizedBox(width: 8),
+            if (step > 0) TextButton(onPressed: d.onStepCancel, child: const Text('Wstecz')),
+          ]),
+        ),
       ),
       Padding(
         padding: const EdgeInsets.all(12),
