@@ -9,7 +9,8 @@ import '../util/json_util.dart';
 
 /// Ed25519 public key that signs update manifests (private key is kept by
 /// the owner / CI secret UPDATE_SIGNING_KEY – never in the repository).
-const updatePublicKeyB64 = String.fromEnvironment('WMS_UPDATE_PUBKEY', defaultValue: 'REPLACED_AT_BUILD');
+const _pubOverride = String.fromEnvironment('WMS_UPDATE_PUBKEY');
+const updatePublicKeyB64 = _pubOverride == '' ? 'gvjaEO9Lj9cnvkoi6whIs898lITKPSHxbcTnyi73mSE=' : _pubOverride;
 
 class UpdateAsset {
   final String url, sha256;

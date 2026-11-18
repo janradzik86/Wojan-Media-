@@ -1,12 +1,21 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val keyProps = Properties()
+val keyFile = rootProject.file("key.properties")
+if (keyFile.exists()) FileInputStream(keyFile).use { stream -> keyProps.load(stream) }
+fun prop(k: String, env: String): String? = keyProps.getProperty(k) ?: System.getenv(env)
+val storePath: String? = prop("storeFile", "WMS_KEYSTORE_PATH")
+
 android {
     namespace = "pl.wojan.mediastudio"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -30,11 +39,6 @@ android {
     }
 
     // Release signing: key.properties (local, git-ignored) or CI env vars.
-    val keyProps = java.util.Properties()
-    val keyFile = rootProject.file("key.properties")
-    if (keyFile.exists()) keyFile.inputStream().use { keyProps.load(it) }
-    fun prop(k: String, env: String) = (keyProps.getProperty(k) ?: System.getenv(env))
-    val storePath = prop("storeFile", "WMS_KEYSTORE_PATH")
     signingConfigs {
         if (storePath != null) {
             create("release") {

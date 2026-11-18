@@ -22,7 +22,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _checkUpdate() async {
     final url = Services.i.settings.get<String>('updateUrl');
-    if (url.isEmpty || updatePublicKeyB64 == 'REPLACED_AT_BUILD') {
+    if (url.isEmpty || updatePublicKeyB64.isEmpty) {
       setState(() => updateStatus = 'Kanał aktualizacji nie jest skonfigurowany w tej kompilacji (adres manifestu / klucz publiczny).');
       return;
     }
