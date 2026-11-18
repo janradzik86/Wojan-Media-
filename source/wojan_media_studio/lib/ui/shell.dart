@@ -9,6 +9,7 @@ import '../app/services.dart';
 import '../app/theme.dart';
 import '../engine/project/format.dart';
 import '../platform/native.dart';
+import 'screens/works_screen.dart';
 import 'screens/audio_studio.dart';
 import 'screens/batch_screen.dart';
 import 'screens/converter.dart';
@@ -48,6 +49,7 @@ const _dests = [
   _Dest('m.queue', Icons.queue_play_next),
   _Dest('m.publisher', Icons.share_outlined),
   _Dest('m.history', Icons.history),
+  _Dest('m.works', Icons.folder_special_outlined),
   _Dest('m.sync', Icons.sync),
   _Dest('m.settings', Icons.settings_outlined),
 ];
@@ -167,6 +169,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         return const PublisherScreen();
       case 'm.history':
         return const HistoryScreen();
+      case 'm.works':
+        return const WorksScreen();
       case 'm.sync':
         return const SyncScreen();
       default:

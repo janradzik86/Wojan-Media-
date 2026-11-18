@@ -284,8 +284,10 @@ Widget wrapBaseVfx(Widget base, VideoProject p, double t, FxSource c, Size size)
           sh = (8 + 20 * i).roundToDouble();
         }
         final d = sh * scale;
-        const rOnly = <double>[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0];
-        const bOnly = <double>[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0.5, 0];
+        // Shifted channel fringes: pure red / blue whose opacity follows the
+        // channel value (no darkening of the picture).
+        const rOnly = <double>[0, 0, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.55, 0, 0, 0, 0];
+        const bOnly = <double>[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 0.55, 0, 0];
         final strips = <Widget>[];
         if (fx.type == 'glitch') {
           // horizontal displaced bands like the noise/hue burst
@@ -448,7 +450,7 @@ class _VfxPainter extends CustomPainter {
     final paint = Paint()..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.45);
     for (final q in ps) {
       final x = _frac(q.x + ox) * W, y = _frac(q.y + oy) * H;
-      paint.color = color.withValues(alpha: (opacity * q.a * 0.55).clamp(0.0, 1.0));
+      paint.color = color.withValues(alpha: (opacity * q.a * 0.3).clamp(0.0, 1.0));
       for (final dx in const [-1.0, 0.0, 1.0]) {
         for (final dy in const [-1.0, 0.0, 1.0]) {
           final cx = x + dx * W, cy = y + dy * H;
@@ -556,7 +558,7 @@ class _VfxPainter extends CustomPainter {
       case 'godrays':
         final d = (math.sqrt(W * W + H * H)).roundToDouble();
         canvas.save();
-        canvas.translate(W / 2, H / 2 - H * 0.25);
+        canvas.translate(W / 2, H / 2 + H * 0.25); // crop window is shifted up by H/4 in the renderer
         canvas.rotate(t * 0.12);
         canvas.drawImageRect(img, src, Rect.fromCenter(center: Offset.zero, width: d, height: d), paint(0.5 + 0.5 * i));
         canvas.restore();
@@ -570,9 +572,9 @@ class _VfxPainter extends CustomPainter {
         canvas.drawImageRect(img, src, Rect.fromCenter(center: Offset.zero, width: d, height: d), paint(0.55 + 0.45 * i));
         canvas.restore();
         break;
-      default: // halftone, aura – square scaled to max(W,H), cropped from top-left
+      default: // halftone, aura – square scaled to max(W,H), centre crop (FFmpeg crop default)
         final d = math.max(W, H);
-        canvas.drawImageRect(img, src, Rect.fromLTWH(0, 0, d, d), paint(0.5 + 0.5 * i));
+        canvas.drawImageRect(img, src, Rect.fromLTWH(((W - d) / 2).floorToDouble(), ((H - d) / 2).floorToDouble(), d, d), paint(0.5 + 0.5 * i));
     }
   }
 
@@ -624,7 +626,7 @@ class _VfxPainter extends CustomPainter {
       case 'fire':
         // flickering flame body rising from the bottom (noise × vertical mask)
         final op = 0.6 + 0.4 * i;
-        final ps = _particles('fire', 70, 2, minS: 0.5, maxS: 1.3);
+        final ps = _particles('fire', 130, 2, minS: 0.6, maxS: 1.4);
         final paint = Paint()..blendMode = BlendMode.screen;
         final fps = p.fps;
         for (final q in ps) {
@@ -632,9 +634,9 @@ class _VfxPainter extends CustomPainter {
           final yy = y * H;
           final m = math.pow(((yy / H - 0.45) / 0.55).clamp(0.0, 1.0), 1.6).toDouble();
           if (m <= 0.01) continue;
-          final r = W * 0.09 * q.s * (0.6 + m);
+          final r = W * 0.13 * q.s * (0.6 + m);
           paint
-            ..shader = ui.Gradient.radial(Offset(q.x * W, yy), r, [Color.fromARGB((255 * op * m * q.a).round().clamp(0, 255), 255, (90 + 100 * (1 - yy / H)).round().clamp(0, 255), 20), const Color(0x00FF5A14)])
+            ..shader = ui.Gradient.radial(Offset(q.x * W, yy), r, [Color.fromARGB((255 * op * math.min(1.0, m * 1.6) * (0.6 + 0.4 * q.a)).round().clamp(0, 255), 255, (90 + 100 * (1 - yy / H)).round().clamp(0, 255), 20), const Color(0x00FF5A14)])
             ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.25);
           canvas.drawCircle(Offset(q.x * W + math.sin(t * 7 + q.ph) * r * 0.2, yy), r, paint);
         }

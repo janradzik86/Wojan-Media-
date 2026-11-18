@@ -1,6 +1,6 @@
 # PROJECT_STATUS – WoJan Media Studio
 
-**Wersja:** 1.0.2 (build 3) • **Aktualizacja:** 2026-11-18 • **Gałąź:** `ccr-752ca9db-2bv10n`
+**Wersja:** 1.0.3 (build 4) • **Aktualizacja:** 2026-11-18 • **Gałąź:** `ccr-752ca9db-2bv10n`
 
 ## Aktualny etap
 Etapy 1–17 wykonane; etap 18 (produkcyjne kompilacje) – **Android ukończony, Windows zablokowany**; etap 19 (test instalatorów na urządzeniach) – niewykonalny w tym środowisku; etap 20 – ten raport.
@@ -13,7 +13,9 @@ Etapy 1–17 wykonane; etap 18 (produkcyjne kompilacje) – **Android ukończony
 * Windows: branding, instalator Inno Setup (skojarzenie .wojanmedia, menu Start, pulpit, deinstalator, ochrona danych), skrypt `scripts/build_windows.ps1`, CI.
 
 ## Ostatni rzeczywisty test
-2026-11-18: `flutter test test/engine -j 1` → **30/30 PASSED**; test integracyjny UI (16 ekranów + generowanie i podgląd teledysku) → **PASSED**. Szczegóły: `docs/TEST_REPORT.md`.
+2026-11-18 (1.0.3): silnik **46/46 PASSED**; zgodność podglądu na żywo z eksportem 68/68 (mediana SSIM 0,979); test UI z odtwarzaniem, biblioteką efektów, intro i wszystkimi narzędziami → PASSED; podgląd projektu 120 ujęć w czasie rzeczywistym. Szczegóły: `docs/TEST_REPORT.md` §0.
+
+Wcześniej: 2026-11-18: `flutter test test/engine -j 1` → **30/30 PASSED**; test integracyjny UI (16 ekranów + generowanie i podgląd teledysku) → **PASSED**. Szczegóły: `docs/TEST_REPORT.md`.
 
 ## Wyniki kompilacji
 | Produkt | Status | Lokalizacja | Rozmiar | SHA-256 |

@@ -56,11 +56,14 @@ class PreviewController extends ChangeNotifier implements FxSource {
   PreviewController({required VideoProject project, required this.assets, this.music, this.musicOffset = 0}) : _project = project {
     _starts = project.clipStarts();
     _posSub = audio.stream.position.listen((d) {
+      if (!audioReady) return; // a mix is being (re)opened – keep the wall clock
       _lastAudioPos = d;
       _lastAudioStamp = DateTime.now();
     });
     audio.stream.completed.listen((done) {
-      if (done && _playing) {
+      // media_kit also reports "completed" while a newly rendered mix is
+      // being opened after an edit – only a real end of the film stops.
+      if (done && _playing && _pos >= duration - 0.25) {
         _playing = false;
         notifyListeners();
       }
@@ -111,6 +114,8 @@ class PreviewController extends ChangeNotifier implements FxSource {
       if (key != _audioKey) return; // superseded by a newer edit
       await audio.open(Media(f.path), play: false);
       await audio.seek(Duration(milliseconds: (_pos * 1000).round()));
+      _lastAudioPos = Duration(milliseconds: (_pos * 1000).round());
+      _lastAudioStamp = DateTime.now();
       if (_playing) await audio.play();
       audioReady = true;
       audioError = null;

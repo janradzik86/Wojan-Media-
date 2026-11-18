@@ -34,6 +34,9 @@ class _Tool {
 const _tools = [
   _Tool('cut', 'Przycinanie', 'Wybierz najlepszy fragment, fade in/out', Icons.content_cut),
   _Tool('omit', 'Usuń fragment', 'Wytnij część ze środka utworu', Icons.remove_circle_outline),
+  _Tool('mute', 'Niemy (wycisz fragment)', 'Wycisz wybraną część – długość utworu bez zmian', Icons.volume_off),
+  _Tool('bitrate', 'Szybkość transmisji', 'Zmień bitrate / rozmiar pliku (kb/s)', Icons.compress),
+  _Tool('videomute', 'Wideo: niemy', 'Usuń dźwięk z filmu (bez ponownego kodowania obrazu)', Icons.videocam_off),
   _Tool('split', 'Podziel', 'Podziel plik na dwie części', Icons.call_split),
   _Tool('merge', 'Połącz', 'Połącz wiele utworów (z crossfade)', Icons.merge_type),
   _Tool('mix', 'Mikser', 'Nałóż kilka dźwięków (remiks, mashup)', Icons.layers),
@@ -106,7 +109,7 @@ class _AudioToolScreenState extends State<AudioToolScreen> {
   DateTime? recStart;
 
   bool get multi => ['merge', 'mix', 'batch'].contains(widget.tool);
-  bool get needsRange => ['cut', 'omit', 'split', 'ringtone'].contains(widget.tool);
+  bool get needsRange => ['cut', 'omit', 'split', 'ringtone', 'mute'].contains(widget.tool);
 
   @override
   void dispose() {
@@ -115,7 +118,7 @@ class _AudioToolScreenState extends State<AudioToolScreen> {
   }
 
   Future<void> _pick() async {
-    final ext = widget.tool == 'extract' ? videoExt : [...audioExt, ...videoExt];
+    final ext = widget.tool == 'extract' || widget.tool == 'videomute' ? videoExt : [...audioExt, ...videoExt];
     final f = await pickFiles(extensions: ext, multiple: multi);
     if (f.isEmpty) return;
     setState(() {
@@ -177,6 +180,12 @@ class _AudioToolScreenState extends State<AudioToolScreen> {
         await tools.cut(first, o, settings, s, math.min(e, s + 40), fadeIn: 0.3, fadeOut: 1.0, cancel: cancel);
       case 'omit':
         await tools.omit(first, o, settings, s, e);
+      case 'mute':
+        await tools.muteRange(first, o, settings, s, e, cancel: cancel);
+      case 'videomute':
+        final vo = preview ? '${Services.i.store.cacheDir.path}/tool_preview_${DateTime.now().millisecondsSinceEpoch}.${extOf(first)}' : exportPath('${stem}_bez_dzwieku', extOf(first));
+        await tools.stripAudio(first, vo, cancel: cancel);
+        return vo;
       case 'split':
         final o2 = o.replaceFirst('.${settings.extension}', '_cz2.${settings.extension}');
         await tools.split(first, o, o2, settings, s > 0 ? s : (e < (info?.duration ?? 0) ? e : (info?.duration ?? 0) / 2));
@@ -196,6 +205,7 @@ class _AudioToolScreenState extends State<AudioToolScreen> {
         await tools.writeTags(first, tagOut, Map.fromEntries(tags.entries.where((e) => e.value.isNotEmpty)), coverImage: cover);
         return tagOut;
       case 'convert':
+      case 'bitrate':
       case 'speed':
       case 'volume':
       case 'fx':
@@ -309,11 +319,11 @@ class _AudioToolScreenState extends State<AudioToolScreen> {
               if (widget.tool != 'split') LabeledSlider(label: 'Koniec', value: e, min: 0, max: dur, unit: 's', decimals: 2, onChanged: (v) => setState(() => e = math.max(v, s))),
               if (widget.tool == 'cut') LabeledSlider(label: 'Fade in', value: fadeIn, min: 0, max: 10, unit: 's', onChanged: (v) => setState(() => fadeIn = v)),
               if (widget.tool == 'cut') LabeledSlider(label: 'Fade out', value: fadeOut, min: 0, max: 10, unit: 's', onChanged: (v) => setState(() => fadeOut = v)),
-              Text('Długość wyniku: ${fmtTime(widget.tool == 'omit' ? dur - (e - s) : e - s)}'),
+              Text(widget.tool == 'mute' ? 'Wyciszony fragment: ${fmtTime(e - s)} • długość pliku bez zmian (${fmtTime(dur)})' : 'Długość wyniku: ${fmtTime(widget.tool == 'omit' ? dur - (e - s) : e - s)}'),
             ]),
           ..._params(),
-          if (widget.tool != 'tags') Section(title: 'Plik wynikowy', children: [_formatPicker()]),
-          if (previewPath != null) PreviewPlayer(path: previewPath, audioOnly: true),
+          if (widget.tool != 'tags' && widget.tool != 'videomute') Section(title: 'Plik wynikowy', children: [_formatPicker()]),
+          if (previewPath != null) PreviewPlayer(key: ValueKey(previewPath), path: previewPath, audioOnly: widget.tool != 'videomute'),
           if (progress > 0) Padding(padding: const EdgeInsets.all(8), child: Row(children: [Expanded(child: LinearProgressIndicator(value: progress < 0.01 ? null : progress)), IconButton(icon: const Icon(Icons.cancel), onPressed: () => cancel?.cancel())])),
           Wrap(spacing: 8, children: [
             if (!multi && widget.tool != 'split') OutlinedButton.icon(onPressed: inputs.isEmpty ? null : () => _go(preview: true), icon: const Icon(Icons.play_arrow), label: Text(tr('preview'))),

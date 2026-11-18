@@ -138,10 +138,11 @@ class _TextPainterAll extends CustomPainter {
   TextStyle _style(TextStyleSpec s, {Color? color, Paint? foreground}) {
     final fs = s.size * _assScale;
     // libass font size is the line height (ascent+descent); Flutter's is
-    // the em size. 0.78 matches the bundled fonts' typical metrics.
+    // the em size. 0.675 was calibrated against libass renders
+    // (integration_test/preview_parity_test.dart).
     return TextStyle(
       fontFamily: PreviewFonts.has(s.font) ? s.font : null,
-      fontSize: fs * 0.78,
+      fontSize: fs * 0.675,
       fontWeight: s.bold ? FontWeight.w700 : FontWeight.w400,
       fontStyle: s.italic ? FontStyle.italic : FontStyle.normal,
       letterSpacing: s.letterSpacing * _assScale,

@@ -6,7 +6,6 @@ import '../../app/services.dart';
 import '../../app/theme.dart';
 import '../../engine/dsp/analysis.dart';
 import '../../engine/export/video_export.dart';
-import '../../engine/ffmpeg/probe.dart';
 import '../../engine/musicvideo/auto.dart';
 import '../../engine/musicvideo/styles.dart';
 import '../../engine/project/asset.dart';
@@ -14,10 +13,10 @@ import '../../engine/project/format.dart';
 import '../../engine/publish/platforms.dart';
 import '../../engine/util/json_util.dart';
 import '../../engine/video/model.dart';
-import '../../engine/video/model.dart';
 import '../shell.dart';
 import '../widgets/common.dart';
-import '../widgets/player.dart';
+import '../preview/live_preview.dart';
+import '../preview/preview_controller.dart';
 import 'render_result.dart';
 import 'video_widgets.dart';
 
@@ -46,7 +45,7 @@ class _QuickVideoScreenState extends State<QuickVideoScreen> {
   ProjectDoc? doc;
   String? preview;
   bool busy = false;
-  double progress = 0;
+  PreviewController? pc;
 
   List<StyleTemplate> get styles => [...factoryStyles, ...Services.i.userStyles()];
 
@@ -101,24 +100,24 @@ class _QuickVideoScreenState extends State<QuickVideoScreen> {
     await _preview();
   }
 
+  /// Real-time preview (FotoPlay-style): no waiting for a render – the
+  /// generated project plays immediately with its music.
   Future<void> _preview() async {
     final d = doc!;
     final v = d.video!;
-    setState(() {
-      busy = true;
-      progress = 0;
-    });
-    final out = '${Services.i.store.cacheDir.path}/qv_preview_${DateTime.now().millisecondsSinceEpoch}.mp4';
-    try {
-      final mc = v.audio.tracks.first.clips.first;
-      await Services.i.videoRenderer().render(v, Services.i.store.resolver(d), VideoExportSettings(width: (v.width / 3 / 2).round() * 2, height: (v.height / 3 / 2).round() * 2, fps: 20, preset: 'ultrafast', crf: 30), out,
-          music: analysis, musicOffset: mc.position - mc.srcIn, onProgress: (t) => setState(() => progress = (t / v.duration).clamp(0, 1)));
-      setState(() => preview = out);
-    } catch (e) {
-      if (mounted) toast(context, '$e', error: true);
-    } finally {
-      if (mounted) setState(() => busy = false);
-    }
+    final mc = v.audio.tracks.first.clips.firstOrNull;
+    final old = pc;
+    pc = PreviewController(project: v, assets: Services.i.store.resolver(d), music: analysis, musicOffset: mc == null ? 0 : mc.position - mc.srcIn);
+    setState(() => preview = d.id);
+    old?.dispose();
+    await pc!.seek(0);
+    await pc!.play();
+  }
+
+  @override
+  void dispose() {
+    pc?.dispose();
+    super.dispose();
   }
 
   @override
@@ -259,9 +258,8 @@ class _QuickVideoScreenState extends State<QuickVideoScreen> {
           ],
         ]),
       ),
-      if (busy) Padding(padding: const EdgeInsets.all(12), child: Column(children: [LinearProgressIndicator(value: progress > 0 ? progress : null), Text('Przygotowanie podglądu ${(progress * 100).round()}%')])),
       if (preview != null && doc != null)
-        Center(child: ConstrainedBox(constraints: const BoxConstraints(maxHeight: 560, maxWidth: 900), child: PreviewPlayer(key: ValueKey(preview), path: preview, aspect: doc!.video!.width / doc!.video!.height))),
+        if (pc != null) Center(child: ConstrainedBox(constraints: const BoxConstraints(maxHeight: 600, maxWidth: 900), child: LivePreview(key: ValueKey(pc), controller: pc!))),
       if (doc != null) Padding(padding: const EdgeInsets.all(12), child: Text('${doc!.video!.clips.length} ujęć zsynchronizowanych z bitem • ${doc!.video!.vfx.length} efektów • ${doc!.video!.lyrics?.lines.length ?? 0} wersów', style: const TextStyle(color: WmsColors.muted))),
     ]);
   }

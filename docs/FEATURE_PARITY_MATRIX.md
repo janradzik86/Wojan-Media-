@@ -76,6 +76,28 @@ Testy silnika uruchamiano na Linux x64 z FFmpeg 6.1 (aplikacje używają FFmpegK
 | Lektor (voice-over) | FP | `record` + ścieżka audio | WYKONANE | – | NIEZWERYFIKOWANE na urządzeniu |
 | Rozmyte tło / dopasowanie proporcji | FP | `FitMode.blurBackground` | PRZETESTOWANE | video_test | – |
 
+## Edytor w stylu FotoPlay (1.0.3)
+
+| Funkcja | Ref. | Implementacja WoJan | Status | Test | Ograniczenia |
+|---|---|---|---|---|---|
+| Przycisk Play i podgląd w czasie rzeczywistym w oknie edycji | FP | `ui/preview/*`: kadr składany przez Flutter z matematyką silnika (ruch, przejścia, efekty, tekst ASS), zegar = miks audio z eksportu | PRZETESTOWANE (Linux) | preview_parity_test (SSIM vs eksport, 70 przypadków), app_smoke_test (Play, zegar w czasie rzeczywistym) | na telefonie NIEZWERYFIKOWANE; niektóre efekty (neon, glitch, RGB, dym) w podglądzie są przybliżeniem – eksport jest dokładny |
+| Podgląd dużego projektu (120 ujęć, 1080×1920) | POL | dekodowanie zdjęć w rozdzielczości ekranu, wstępne dekodowanie następnych ujęć, ticker tylko podczas odtwarzania | PRZETESTOWANE (Linux) | preview_parity_test (test wydajności) | – |
+| Render długich projektów bez awarii | POL | `SegmentedRenderer` (segmenty + cache + proxy zdjęć) | PRZETESTOWANE | segments_test (120 ujęć/4 min; 299 ujęć – 154 s, 122 MB RAM) | – |
+| Pasek narzędzi: Edytuj, Muzyka, Wstęp, Efekt, Rama, Tekst, Naklejka, PIP, Proporcja, Tło, Filtr, Reguluj, Przejście, Spektrum, Napisy, Warstwa | FP | `video_studio_tools.dart` | PRZETESTOWANE (Linux UI) | app_smoke_test (każde narzędzie otwierane, efekt/intro dodawane i odtwarzane) | – |
+| Muzyka: Muzyka / Lokalna / Wyodrębnij / Nagrywanie | FP | import, ekstrakcja ścieżki z wideo (AAC), lektor (record) | WYKONANE | ekstrakcja: mstudio_tools_test (pośrednio stripAudio/extract) | nagrywanie na urządzeniu NIEZWERYFIKOWANE |
+| Klip audio: Rozdzielać, Tom, Edytować, Stępować (fade), Beat-sync, Usunąć, Zastąpić, Duplikat | FP | arkusz „Muzyka” | WYKONANE | UI otwierane w app_smoke_test | – |
+| Biblioteka efektów w kategoriach z animowanymi miniaturami | FP | 13 kategorii, 73 efekty łącznie (28 proceduralnych + 45 nowych) | PRZETESTOWANE | vfx_library_test (każdy efekt 9:16 i 16:9, zmiana obrazu), parity | tekstury są oryginalne (nie kopie zasobów FotoPlay) |
+| Cząsteczki: serca, gwiazdy, błyski, konfetti, płatki, liście, śnieg, bańki, nuty, motyle, kwiaty, pieniądze, balony, diamenty, złoty pył, świetliki, żar, bokeh, deszcz (22) | FP | `vfx_library.dart` + `assets/fx/p_*.png` | PRZETESTOWANE | vfx_library_test | – |
+| Ramy (14) | FP | `frame_*` + animowana ramka | PRZETESTOWANE | vfx_library_test, parity | ramki projektowane dla 9:16, w innych proporcjach skalowane |
+| Uderzenie / Ruch: zoom na bit, wstrząs, bicie serca, stroboskop, fala uderzeniowa, wybuch światła, linie prędkości, promienie, raster, aura | FP | `vfx_library.dart` (sendcmd z prawdziwych bitów; bez muzyki 120 BPM) | PRZETESTOWANE | vfx_library_test | – |
+| Wstęp (intro) – 16 motywów | FP | `intros.dart` (karta, tytuł, podtytuł, efekty, przesunięcie reszty filmu) | PRZETESTOWANE | vfx_library_test (każde intro: zastosuj/zamień/usuń/renderuj) | – |
+| Naklejki (emoji) | FP | rasteryzacja emoji systemowej czcionki do PNG → nakładka | WYKONANE | UI | wygląd emoji zależy od systemu (Android/Windows) |
+| Filtr z miniaturami, Reguluj | FP | 16 looków, 10 suwaków; cały film lub klip | PRZETESTOWANE | parity (grade_warm), video_test | – |
+| Mstudio: Niemy (wycisz fragment) | MS | `AudioTools.muteRange` | PRZETESTOWANE | mstudio_tools_test (zakres cichy, reszta słyszalna, długość bez zmian) | – |
+| Mstudio: Szybkość transmisji | MS | narzędzie „Szybkość transmisji” | PRZETESTOWANE | mstudio_tools_test (64 vs 256 kb/s → rozmiar ×4) | – |
+| Mstudio: Wideo – Niemy / Na audio | MS | `AudioTools.stripAudio` / „Wideo → audio” | PRZETESTOWANE | mstudio_tools_test | – |
+| Mstudio: Moje dzieło | MS | ekran `WorksScreen` | WYKONANE | app_smoke_test (ekran 14b) | – |
+
 ## Szybki teledysk, wizualizator, lyric/karaoke
 
 | Funkcja | Implementacja | Status | Test | Ograniczenia |

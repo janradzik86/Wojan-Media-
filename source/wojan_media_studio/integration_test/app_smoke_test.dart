@@ -9,6 +9,7 @@ import 'package:wojan_media_studio/engine/musicvideo/auto.dart';
 import 'package:wojan_media_studio/engine/musicvideo/styles.dart';
 import 'package:wojan_media_studio/engine/project/format.dart';
 import 'package:wojan_media_studio/main.dart' as app;
+import 'package:wojan_media_studio/ui/preview/live_preview.dart';
 import 'package:wojan_media_studio/ui/shell.dart';
 
 /// Real end-to-end smoke test of the desktop app: every screen is built,
@@ -19,15 +20,31 @@ void main() {
   final shots = Platform.environment['WMS_SHOTS'] ?? '/tmp/wms_shots';
 
   Future<void> shot(String name) async {
+    // ignore: avoid_print
+    print('STEP $name');
     await Directory(shots).create(recursive: true);
     await Process.run('import', ['-window', 'root', '$shots/$name.png']);
   }
 
+  Future<void> closeSheet(WidgetTester t) async {
+    // tap the dimmed area above the bottom sheet, like a user would
+    await t.tapAt(const Offset(640, 30));
+    for (var i = 0; i < 6; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+  }
+
   testWidgets('all screens render; generated music video opens and previews', (t) async {
+    // Clean, reproducible start: remove data left by earlier (interrupted)
+    // runs on this machine – otherwise crash recovery would (rightly) ask
+    // about their autosaves.
+    final home = Platform.environment['HOME'];
+    final data = Directory('$home/.local/share/pl.wojan.wojan_media_studio/WoJanMediaStudio');
+    if (Platform.isLinux && data.existsSync()) data.deleteSync(recursive: true);
     await app.main([]);
     await t.pumpAndSettle(const Duration(seconds: 2));
     expect(find.text('Nowy projekt'), findsOneWidget);
-    final names = ['01_projekty', '02_studio_audio', '03_studio_wideo', '04_szybki_teledysk', '05_lyric_video', '06_karaoke', '07_wizualizator', '08_konwerter', '09_biblioteka', '10_szablony', '11_wsad', '12_kolejka', '13_publisher', '14_historia', '15_synchronizacja', '16_ustawienia'];
+    final names = ['01_projekty', '02_studio_audio', '03_studio_wideo', '04_szybki_teledysk', '05_lyric_video', '06_karaoke', '07_wizualizator', '08_konwerter', '09_biblioteka', '10_szablony', '11_wsad', '12_kolejka', '13_publisher', '14_historia', '14b_moje_dzielo', '15_synchronizacja', '16_ustawienia'];
     for (var i = 0; i < names.length; i++) {
       Nav.index.value = i;
       await t.pumpAndSettle(const Duration(milliseconds: 600));
@@ -57,24 +74,96 @@ void main() {
     await t.pumpAndSettle(const Duration(seconds: 1));
     await shot('17_projekty_z_teledyskiem');
     Nav.openProject(d);
-    await t.pumpAndSettle(const Duration(seconds: 2));
+    for (var i = 0; i < 8; i++) {
+      await t.pump(const Duration(milliseconds: 250));
+    }
     expect(find.text('Teledysk z testu UI'), findsWidgets);
     expect(t.takeException(), isNull, reason: 'video studio layout');
     await shot('18_studio_wideo_projekt');
-    await t.tap(find.text('Podgląd').first);
-    for (var i = 0; i < 240; i++) {
+    // ---- real-time preview: Play advances the clock, frames are composed live
+    expect(find.byType(LivePreview), findsOneWidget);
+    final pcState = Services.i; // keep services alive
+    expect(pcState, isNotNull);
+    await t.tap(find.byTooltip('Odtwórz').hitTestable().first);
+    for (var i = 0; i < 12; i++) {
+      await t.pump(const Duration(milliseconds: 250));
+    }
+    await shot('19_podglad_na_zywo_play');
+    final lp = t.widget<LivePreview>(find.byType(LivePreview));
+    expect(lp.controller.playing, isTrue);
+    expect(lp.controller.position, greaterThan(1.0), reason: 'clock advanced while playing');
+    await shot('19b_przed_pauza');
+    await t.tap(find.byTooltip('Pauza').hitTestable().first);
+    await t.pump(const Duration(milliseconds: 300));
+    expect(lp.controller.playing, isFalse);
+    expect(t.takeException(), isNull, reason: 'live preview while playing');
+    // ---- effect library sheet with animated thumbnails
+    await t.tap(find.byKey(const Key('tool_fx')));
+    for (var i = 0; i < 8; i++) {
+      await t.pump(const Duration(milliseconds: 150));
+    }
+    await shot('20_biblioteka_efektow');
+    await t.tap(find.byKey(const Key('fx_tex_hearts_red')));
+    await t.pump(const Duration(milliseconds: 300));
+    expect(t.widget<LivePreview>(find.byType(LivePreview)).controller.project.vfx.any((v) => v.type == 'tex_hearts_red'), isTrue);
+    await t.tap(find.text('Uderzenie'));
+    for (var i = 0; i < 4; i++) {
+      await t.pump(const Duration(milliseconds: 150));
+    }
+    await shot('21_efekty_uderzenie');
+    await t.tap(find.byKey(const Key('fx_zoompunch')));
+    await t.pump(const Duration(milliseconds: 300));
+    expect(t.takeException(), isNull, reason: 'effects sheet');
+    await closeSheet(t);
+    await t.pump(const Duration(milliseconds: 500));
+    await t.tap(find.byTooltip('Odtwórz').hitTestable().first);
+    for (var i = 0; i < 6; i++) {
+      await t.pump(const Duration(milliseconds: 250));
+    }
+    await shot('22_podglad_serca_zoom');
+    await t.tap(find.byTooltip('Pauza').hitTestable().first);
+    await t.pump(const Duration(milliseconds: 300));
+    // ---- intro
+    await t.tap(find.byKey(const Key('tool_intro')));
+    for (var i = 0; i < 6; i++) {
+      await t.pump(const Duration(milliseconds: 150));
+    }
+    await shot('23_wstepy');
+    await t.tap(find.byKey(const Key('intro_birthday')));
+    for (var i = 0; i < 6; i++) {
+      await t.pump(const Duration(milliseconds: 250));
+    }
+    expect(t.widget<LivePreview>(find.byType(LivePreview)).controller.project.clips.first.label, 'intro');
+    await closeSheet(t);
+    await t.pump(const Duration(milliseconds: 500));
+    await shot('24_wstep_odtwarzany');
+    await t.tap(find.byTooltip('Pauza').hitTestable().first);
+    await t.pump(const Duration(milliseconds: 300));
+    // ---- every toolbar tool opens without layout errors
+    for (final k in ['tool_edit', 'tool_music', 'tool_frame', 'tool_text', 'tool_sticker', 'tool_ratio', 'tool_bg', 'tool_filter', 'tool_adjust', 'tool_transition', 'tool_vis', 'tool_subs', 'tool_layers']) {
+      await t.ensureVisible(find.byKey(Key(k)));
+      await t.pump(const Duration(milliseconds: 100));
+      await t.tap(find.byKey(Key(k)));
+      for (var i = 0; i < 5; i++) {
+        await t.pump(const Duration(milliseconds: 120));
+      }
+      expect(t.takeException(), isNull, reason: k);
+      await shot('25_$k');
+      await closeSheet(t);
+      await t.pump(const Duration(milliseconds: 400));
+    }
+    // ---- exact (engine) preview still available
+    await t.tap(find.text('Dokładny podgląd').first);
+    for (var i = 0; i < 600; i++) {
       await t.pump(const Duration(milliseconds: 500));
-      final files = Directory(s.store.cacheDir.path).listSync().whereType<File>().where((f) => f.path.contains('preview_${d.id}') && f.lengthSync() > 1000);
-      if (files.isNotEmpty && find.textContaining('Podgląd ').evaluate().isEmpty) break;
+      if (find.text('Zamknij').evaluate().isNotEmpty && find.byType(LinearProgressIndicator).evaluate().isEmpty) break;
     }
     await t.pump(const Duration(seconds: 2));
     final previews = Directory(s.store.cacheDir.path).listSync().whereType<File>().where((f) => f.path.contains('preview_${d.id}')).toList();
-    expect(previews, isNotEmpty, reason: 'real preview rendered from UI');
-    expect(t.takeException(), isNull, reason: 'preview layout');
-    await shot('19_podglad_wygenerowany');
-    // select first clip → inspector
-    await t.tap(find.byType(GestureDetector).at(0), warnIfMissed: false);
-    await t.pumpAndSettle(const Duration(milliseconds: 500));
+    expect(previews, isNotEmpty, reason: 'exact preview rendered from UI');
+    await shot('26_dokladny_podglad');
+    await t.tap(find.text('Zamknij').first);
+    await t.pump(const Duration(milliseconds: 500));
     expect(t.takeException(), isNull);
   }, timeout: const Timeout(Duration(minutes: 15)));
 }

@@ -23,7 +23,8 @@ class LivePreview extends StatefulWidget {
   final PreviewController controller;
   final bool safeZones;
   final bool showControls;
-  const LivePreview({super.key, required this.controller, this.safeZones = false, this.showControls = true});
+  final bool pausedIcon;
+  const LivePreview({super.key, required this.controller, this.safeZones = false, this.showControls = true, this.pausedIcon = true});
   @override
   State<LivePreview> createState() => _LivePreviewState();
 }
@@ -34,12 +35,32 @@ class _LivePreviewState extends State<LivePreview> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
-    _ticker.start();
+    widget.controller.addListener(_onCtl);
     widget.controller.prepareAudio();
+  }
+
+  /// The frame clock only runs while playing (no battery drain when idle).
+  void _onCtl() {
+    final playing = widget.controller.playing;
+    if (playing && !_ticker.isActive) {
+      _ticker.start();
+    } else if (!playing && _ticker.isActive) {
+      _ticker.stop();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant LivePreview old) {
+    super.didUpdateWidget(old);
+    if (old.controller != widget.controller) {
+      old.controller.removeListener(_onCtl);
+      widget.controller.addListener(_onCtl);
+    }
   }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_onCtl);
     _ticker.dispose();
     super.dispose();
   }
@@ -58,7 +79,7 @@ class _LivePreviewState extends State<LivePreview> with SingleTickerProviderStat
               child: LayoutBuilder(builder: (ctx, box) {
                 return ListenableBuilder(
                   listenable: c,
-                  builder: (ctx, _) => _Frame(c: c, size: box.biggest, safeZones: widget.safeZones),
+                  builder: (ctx, _) => _Frame(c: c, size: box.biggest, safeZones: widget.safeZones, pausedIcon: widget.pausedIcon),
                 );
               }),
             ),
@@ -91,7 +112,8 @@ class _Frame extends StatelessWidget {
   final PreviewController c;
   final Size size;
   final bool safeZones;
-  const _Frame({required this.c, required this.size, required this.safeZones});
+  final bool pausedIcon;
+  const _Frame({required this.c, required this.size, required this.safeZones, this.pausedIcon = true});
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +121,7 @@ class _Frame extends StatelessWidget {
     final t = c.position;
     final scale = size.width / p.width; // display px per output px
     final st = trackAt(p, c.starts, t);
+    if (st != null) _precacheAhead(context, st.next ?? st.index);
     Widget base;
     if (st == null) {
       base = Container(color: hexColor(p.background));
@@ -129,7 +152,7 @@ class _Frame extends StatelessWidget {
       // texts & lyrics
       Positioned.fill(child: IgnorePointer(child: TextLayer(project: p, t: t, scale: scale, size: size))),
       if (safeZones) Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: SafeZonesPainter(p.height > p.width)))),
-      if (!c.playing)
+      if (!c.playing && pausedIcon)
         Positioned.fill(child: IgnorePointer(child: Center(child: Container(decoration: const BoxDecoration(color: Colors.black38, shape: BoxShape.circle), padding: const EdgeInsets.all(10), child: const Icon(Icons.play_arrow, color: Colors.white, size: 44))))),
     ];
     return Stack(clipBehavior: Clip.hardEdge, children: layers);
@@ -185,9 +208,20 @@ class _Frame extends StatelessWidget {
     return SizedBox(width: W, height: H, child: out);
   }
 
+  ImageProvider _provider(String path) => ResizeImage(FileImage(File(path)), width: (size.width * 2.2).round().clamp(320, 2160), policy: ResizeImagePolicy.fit, allowUpscaling: false);
+
+  /// Decodes the next photos ahead of time so cuts never show an empty frame.
+  void _precacheAhead(BuildContext context, int from) {
+    final p = c.project;
+    for (var k = from + 1; k <= from + 2 && k < p.clips.length; k++) {
+      final cl = p.clips[k];
+      if (cl.kind == ClipKind.image && cl.assetId != null) precacheImage(_provider(c.assets.pathOf(cl.assetId!)), context);
+    }
+  }
+
   Widget _imageCanvas(VisualClip clip, String path) {
     final img = Image(
-      image: ResizeImage(FileImage(File(path)), width: (size.width * 2.2).round().clamp(320, 2160), policy: ResizeImagePolicy.fit, allowUpscaling: false),
+      image: _provider(path),
       gaplessPlayback: true,
       filterQuality: FilterQuality.medium,
     );
@@ -436,12 +470,17 @@ class TransitionView extends StatelessWidget {
     final q = progress.clamp(0.0, 1.0);
     final W = size.width, H = size.height;
     Widget stack(List<Widget> c) => Stack(fit: StackFit.expand, clipBehavior: Clip.hardEdge, children: c);
-    Widget clip(Widget w, Alignment al, double wf, double hf) => ClipRect(child: Align(alignment: al, widthFactor: wf, heightFactor: hf, child: w));
+    // Shows the [wf]×[hf] part of [w] anchored at [al] (real clipping; the
+    // child keeps its full size so nothing moves).
+    Widget clip(Widget w, Alignment al, double wf, double hf) => ClipRect(clipper: _FracClip(al, wf, hf), child: w);
     switch (type) {
       case 'fadeblack':
       case 'fadewhite':
+        // FFmpeg xfade (P = 1-q): out = P·mix(A,c,S(0.8,1,P)) + (1-P)·mix(B,c,S(0.2,1,P))
         final col = type == 'fadeblack' ? Colors.black : Colors.white;
-        return q < 0.5 ? stack([a, Container(color: col.withValues(alpha: q * 2))]) : stack([b, Container(color: col.withValues(alpha: (1 - q) * 2))]);
+        final pp = 1 - q;
+        final wa = pp * _ss(0.8, 1, pp), wb = (1 - pp) * _ss(0.2, 1, pp);
+        return stack([Container(color: col), Opacity(opacity: wa.clamp(0.0, 1.0), child: a), Opacity(opacity: wb.clamp(0.0, 1.0), child: b)]);
       case 'slideleft':
       case 'slideright':
       case 'slideup':
@@ -453,6 +492,17 @@ class TransitionView extends StatelessWidget {
         final dx = type.contains('left') ? -1.0 : type.contains('right') ? 1.0 : 0.0;
         final dy = type.contains('up') ? -1.0 : type.contains('down') ? 1.0 : 0.0;
         final cover = type == 'coverleft', reveal = type == 'revealright';
+        if (type == 'smoothleft' || type == 'smoothright') {
+          // xfade: B weight = smoothstep(0,1, 1 + x/W - 2P) (mirrored for right)
+          final pp = 1 - q;
+          final stops = <double>[for (var k = 0; k <= 16; k++) k / 16];
+          final al = [for (final x in stops) 1 - _ss(0, 1, 1 + (type == 'smoothleft' ? x : 1 - x) - 2 * pp)];
+          return stack([a, ShaderMask(blendMode: BlendMode.dstIn, shaderCallback: (r) => ui.Gradient.linear(r.centerLeft, r.centerRight, [for (final v in al) Color.fromRGBO(255, 255, 255, 1 - v)], stops), child: b)]);
+        }
+        if (reveal) {
+          // A slides away to the right revealing B, which stays still
+          return stack([b, Transform.translate(offset: Offset(q * W, 0), child: a)]);
+        }
         return stack([
           Transform.translate(offset: cover ? Offset.zero : Offset(dx * q * W, dy * q * H), child: reveal ? b : a),
           Transform.translate(offset: reveal ? Offset(dx * q * W, dy * q * H) : Offset(-dx * (1 - q) * W, -dy * (1 - q) * H), child: reveal ? a : b),
@@ -466,12 +516,55 @@ class TransitionView extends StatelessWidget {
       case 'wipedown':
         return stack([a, Positioned.fill(child: clip(b, Alignment.topCenter, 1, q))]);
       case 'zoomin':
-        return stack([Transform.scale(scale: 1 + q, child: Opacity(opacity: 1 - q, child: a)), Opacity(opacity: q, child: b)]);
+        // FFmpeg xfade: A zooms in (zf = S(0.5,1,P)), then fades to B with S(0,0.5,P)
+        final pp = 1 - q;
+        final zf = _ss(0.5, 1, pp), wa = _ss(0, 0.5, pp);
+        return stack([b, Opacity(opacity: wa, child: Transform.scale(scale: 1 / math.max(zf, 0.002), child: a))]);
+      case 'dissolve':
+        // xfade: per-pixel random threshold → B appears pixel by pixel
+        return stack([a, ShaderMask(blendMode: BlendMode.dstIn, shaderCallback: (r) => ImageShader(_dissolveMask(q), TileMode.repeated, TileMode.repeated, Matrix4.identity().storage, filterQuality: FilterQuality.none), child: b)]);
+      case 'rectcrop':
+        // A shrinks to a centred rectangle on black, then B grows from it
+        final f = q < 0.5 ? 1 - 2 * q : 2 * q - 1;
+        return stack([Container(color: Colors.black), clip(q < 0.5 ? a : b, Alignment.center, f, f)]);
+      case 'hlslice':
+        const n = 10;
+        final pp = 1 - q;
+        return stack([
+          a,
+          for (var k = 0; k < n; k++)
+            Positioned(left: W * k / n, top: 0, width: W / n + 0.5, height: H, child: ClipRect(clipper: _FracClip(Alignment.centerLeft, _ss(-0.5, 0, (k + 0.5) / n - pp * 1.5), 1), child: OverflowBox(alignment: Alignment(-1 + 2 * k / (n - 1), 0), minWidth: W, maxWidth: W, child: SizedBox(width: W, height: H, child: b)))),
+        ]);
+      case 'pixelize':
+        final blk = 1 + 0.05 * W * math.sin(math.pi * q); // ~5% of the width at the midpoint, like xfade
+        final k = 1 / blk.clamp(1.0, 200.0);
+        return Transform.scale(
+          scale: 1 / k,
+          alignment: Alignment.topLeft,
+          filterQuality: FilterQuality.none,
+          child: Transform.scale(scale: k, alignment: Alignment.topLeft, filterQuality: FilterQuality.none, child: stack([a, Opacity(opacity: q, child: b)])),
+        );
       case 'circleopen':
       case 'circleclose':
+        // FFmpeg xfade: smooth = dist/halfDiag + p, p = ±(progress-0.5)*3,
+        // blended with smoothstep(0,1,smooth) – reproduced as a radial mask.
+        final open = type == 'circleopen';
+        double sstep(double x) {
+          final v = x.clamp(0.0, 1.0);
+          return v * v * (3 - 2 * v);
+        }
+        final stops = <double>[for (var k = 0; k <= 16; k++) k / 16];
+        final alphas = [for (final r in stops) open ? 1 - sstep(r + (0.5 - q) * 3) : sstep(r + (q - 0.5) * 3)];
+        return stack([
+          a,
+          ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (rect) => ui.Gradient.radial(rect.center, math.sqrt(rect.width * rect.width + rect.height * rect.height) / 2, [for (final al in alphas) Color.fromRGBO(255, 255, 255, al)], stops),
+            child: b,
+          ),
+        ]);
       case 'radial':
-        final open = type != 'circleclose';
-        return stack([open ? a : b, ClipPath(clipper: _CircleClip(open ? q : 1 - q, type == 'radial'), child: open ? b : a)]);
+        return stack([a, ClipPath(clipper: _CircleClip(q, true), child: b)]);
       case 'hblur':
         final bl = math.sin(q * math.pi) * 18 + 0.01;
         return ImageFiltered(imageFilter: ImageFilterShim.blur(bl), child: stack([a, Opacity(opacity: q, child: b)]));
@@ -501,16 +594,20 @@ class TransitionView extends StatelessWidget {
             ),
         ]);
       case 'cube':
+        // engine: A squeezed into [0, P·W], B into [P·W, W], tapered edges
+        final pp = 1 - q;
         return stack([
-          Transform(alignment: Alignment.centerRight, transform: Matrix4.identity()..setEntry(3, 2, 0.0015)..rotateY(-q * math.pi / 2), child: a),
-          Transform(alignment: Alignment.centerLeft, transform: Matrix4.identity()..setEntry(3, 2, 0.0015)..rotateY((1 - q) * math.pi / 2), child: b),
+          Container(color: Colors.black),
+          // projective w = 1 + v·x reproduces persA/persB (height shrinks by
+          // 1+0.25·(1-P) at the shared edge)
+          Transform(alignment: Alignment.centerLeft, transform: Matrix4.identity()..setEntry(3, 0, 0.25 * q / math.max(pp * W, 1))..scaleByDouble(math.max(pp, 0.001), 1, 1, 1), child: a),
+          Transform(alignment: Alignment.centerRight, transform: Matrix4.identity()..setEntry(3, 0, -0.25 * pp / math.max(q * W, 1))..scaleByDouble(math.max(q, 0.001), 1, 1, 1), child: b),
         ]);
       case 'filmburn':
         return stack([a, Opacity(opacity: q, child: b), IgnorePointer(child: Container(color: const Color(0xFFFFE2B0).withValues(alpha: math.sin(math.pi * q) * 0.75)))]);
       case 'squeezeh':
-        return stack([Transform.scale(scaleX: math.max(0.001, 1 - q), child: a), Opacity(opacity: q, child: b)]);
-      case 'pixelize':
-        return stack([Opacity(opacity: 1 - q, child: a), Opacity(opacity: q, child: b)]);
+        // xfade squeezeh: A squeezed vertically into a centred band over B
+        return stack([b, Transform.scale(scaleY: math.max(0.001, 1 - q), child: a)]);
       default:
         return stack([a, Opacity(opacity: q, child: b)]);
     }
@@ -540,3 +637,43 @@ class _CircleClip extends CustomClipper<Path> {
 
 /// Utility used by toolbars to show time.
 String fmtPreviewTime(double s) => fmtTime(s);
+
+class _FracClip extends CustomClipper<Rect> {
+  final Alignment al;
+  final double wf, hf;
+  _FracClip(this.al, this.wf, this.hf);
+  @override
+  Rect getClip(Size size) {
+    final w = size.width * wf.clamp(0.0, 1.0), h = size.height * hf.clamp(0.0, 1.0);
+    final x = (size.width - w) * (al.x + 1) / 2, y = (size.height - h) * (al.y + 1) / 2;
+    return Rect.fromLTWH(x, y, w, h);
+  }
+
+  @override
+  bool shouldReclip(covariant _FracClip o) => o.wf != wf || o.hf != hf || o.al != al;
+}
+
+double _ss(double e0, double e1, double x) {
+  final t = ((x - e0) / (e1 - e0)).clamp(0.0, 1.0);
+  return t * t * (3 - 2 * t);
+}
+
+/// Binary random masks for 'dissolve' (xfade: frand*2 + progress*2 - 1.5 ≥ 0.5).
+final Map<int, ui.Image> _dissolveCache = {};
+ui.Image _dissolveMask(double q) {
+  final lvl = (q * 32).round().clamp(0, 32);
+  return _dissolveCache.putIfAbsent(lvl, () {
+    final r = math.Random(12345);
+    final rec = ui.PictureRecorder();
+    final c = Canvas(rec);
+    final paint = Paint()..color = Colors.white;
+    final pp = 1 - lvl / 32;
+    for (var y = 0; y < 96; y++) {
+      for (var x = 0; x < 96; x++) {
+        final smooth = r.nextDouble() * 2 + pp * 2 - 1.5;
+        if (smooth < 0.5) c.drawRect(Rect.fromLTWH(x.toDouble(), y.toDouble(), 1, 1), paint); // B visible
+      }
+    }
+    return rec.endRecording().toImageSync(96, 96);
+  });
+}

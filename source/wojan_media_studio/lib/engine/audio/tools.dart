@@ -62,6 +62,21 @@ class AudioTools {
     ], cancel: cancel, what: 'Cięcie nie powiodło się');
   }
 
+  /// "Niemy": silences [start,end] keeping the total length and timing.
+  Future<void> muteRange(String input, String output, AudioExportSettings s, double start, double end, {double fade = 0.02, CancelToken? cancel}) async {
+    if (end <= start) throw MediaEngineException('Nieprawidłowy zakres wyciszenia');
+    // short ramps avoid clicks at the edges of the muted part
+    final f = fsec(fade);
+    final vol = "volume='if(between(t,${fsec(start)},${fsec(end)}),max(0,min(1,max((${fsec(start)}+$f-t)/$f,(t-${fsec(end)}+$f)/$f))),1)':eval=frame";
+    await runner.run(['-i', input, '-vn', '-map', '0:a:0', '-af', vol, '-map_metadata', '0', ...s.codecArgs(), output], cancel: cancel, what: 'Wyciszenie fragmentu nie powiodło się');
+  }
+
+  /// "Wideo: Niemy": removes the sound track from a video without
+  /// re-encoding the picture.
+  Future<void> stripAudio(String input, String output, {CancelToken? cancel}) async {
+    await runner.run(['-i', input, '-map', '0:v:0', '-c:v', 'copy', '-an', '-map_metadata', '0', '-movflags', '+faststart', output], cancel: cancel, what: 'Usunięcie dźwięku z wideo nie powiodło się');
+  }
+
   /// Omitter: removes [start,end] from the middle, joining the rest.
   Future<void> omit(String input, String output, AudioExportSettings s, double start, double end, {double crossfade = 0.02}) async {
     await runner.run([

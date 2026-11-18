@@ -26,8 +26,10 @@ import '../platform/disk.dart';
 import '../platform/kit_runner.dart';
 import '../platform/native.dart';
 import 'l10n.dart';
+import '../engine/video/vfx_library.dart';
+import '../ui/preview/text_layer.dart';
 
-const appVersion = String.fromEnvironment('WMS_VERSION', defaultValue: '1.0.0');
+const appVersion = String.fromEnvironment('WMS_VERSION', defaultValue: '1.0.3');
 
 /// Application-wide settings (persisted, synchronised as KV doc).
 class AppSettings extends ChangeNotifier {
@@ -97,6 +99,18 @@ class Services {
         await f.writeAsBytes(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
       }
     }
+    // Effect textures (original artwork) → fx dir for the FFmpeg renderer.
+    final fxDir = Directory('${root.path}/fx');
+    await fxDir.create(recursive: true);
+    for (final a in manifest.listAssets().where((a) => a.startsWith('assets/fx/'))) {
+      final data = await rootBundle.load(a);
+      final f = File('${fxDir.path}/${a.split('/').last}');
+      if (!f.existsSync() || f.lengthSync() != data.lengthInBytes) {
+        await f.writeAsBytes(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+      }
+    }
+    FxAssets.dir = fxDir.path;
+    PreviewFonts.ensure(userFontsDir: fontsDir.path);
     MediaRunner runner;
     if (Platform.isAndroid || Platform.isWindows || Platform.isMacOS) {
       await KitRunner.init(fontsDir: fontsDir.path);

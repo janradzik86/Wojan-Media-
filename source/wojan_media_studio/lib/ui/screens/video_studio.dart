@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart' hide Easing;
 import 'package:record/record.dart';
@@ -20,14 +22,22 @@ import '../../engine/util/fontname.dart';
 import '../../engine/util/json_util.dart';
 import '../../engine/util/undo.dart';
 import '../../engine/video/color.dart';
+import '../../engine/video/intros.dart';
 import '../../engine/video/model.dart';
 import '../../engine/video/vfx.dart';
+import '../../engine/video/vfx_library.dart';
 import '../../engine/video/visualizer.dart';
+import '../preview/fx_painters.dart';
+import '../preview/live_preview.dart';
+import '../preview/preview_controller.dart';
+import '../preview/text_layer.dart';
 import '../shell.dart';
 import '../widgets/common.dart';
 import '../widgets/player.dart';
 import 'render_result.dart';
 import 'video_widgets.dart';
+
+part 'video_studio_tools.dart';
 
 class VideoStudioScreen extends StatefulWidget {
   const VideoStudioScreen({super.key});
@@ -54,6 +64,43 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
   final recorder = AudioRecorder();
   bool recording = false;
   double recordAt = 0;
+  PreviewController? pc;
+  final _tlScroll = ScrollController();
+
+  /// Keeps the playhead visible while playing.
+  void _followPlayhead() {
+    final c = pc;
+    if (c == null || !c.playing || !_tlScroll.hasClients) return;
+    final x = 70 + c.position * zoom;
+    final view = _tlScroll.position.viewportDimension;
+    final off = _tlScroll.offset;
+    if (x < off || x > off + view - 40) {
+      _tlScroll.jumpTo((x - 80).clamp(0.0, _tlScroll.position.maxScrollExtent));
+    }
+  }
+  bool _syncQueued = false;
+
+  /// Every state change of the editor also refreshes the live preview.
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _syncPreview();
+  }
+
+  void _syncPreview() {
+    if (pc == null || doc?.video == null || _syncQueued) return;
+    _syncQueued = true;
+    scheduleMicrotask(() {
+      _syncQueued = false;
+      if (!mounted || pc == null || doc?.video == null) return;
+      pc!.projectChanged(p);
+    });
+  }
+
+  double get _musicOffset {
+    final mc = p.audio.tracks.expand((t) => t.clips).where((c) => c.assetId == p.musicAssetId).firstOrNull;
+    return mc == null ? 0 : mc.position - mc.srcIn;
+  }
 
   @override
   void initState() {
@@ -68,6 +115,8 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
   void dispose() {
     _autosave?.cancel();
     recorder.dispose();
+    pc?.dispose();
+    _tlScroll.dispose();
     super.dispose();
   }
 
@@ -79,6 +128,8 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
       if (d.type == ProjectType.audio) return;
       d.video = VideoProject();
     }
+    pc?.dispose();
+    pc = PreviewController(project: d.video!, assets: Services.i.store.resolver(d))..addListener(_followPlayhead);
     setState(() => doc = d);
     _loadMusic();
   }
@@ -87,7 +138,11 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
     final id = p.musicAssetId;
     if (id == null || !doc!.assets.containsKey(id)) return;
     final a = await Services.i.analyze(resolver.pathOf(id), doc!.assets[id]!.sha256);
-    if (mounted) setState(() => music = a);
+    if (mounted) {
+      setState(() => music = a);
+      pc?.music = a;
+      pc?.musicOffset = _musicOffset;
+    }
   }
 
   AssetResolver get resolver => Services.i.store.resolver(doc!);
@@ -117,6 +172,8 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
     d.video = VideoProject(width: fmt.$1, height: fmt.$2);
     await Services.i.store.save(d);
     Nav.openProjectId = d.id;
+    pc?.dispose();
+    pc = PreviewController(project: d.video!, assets: Services.i.store.resolver(d))..addListener(_followPlayhead);
     setState(() => doc = d);
   }
 
@@ -252,26 +309,6 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
   }
 
   // ------------------------------------------------------------ preview
-  Future<void> _renderPreview() async {
-    if (doc == null || p.duration <= 0) return;
-    setState(() {
-      previewBusy = true;
-      previewProgress = 0;
-    });
-    final scale = Services.i.settings.get<num>('previewScale').toDouble();
-    final out = '${Services.i.store.cacheDir.path}/preview_${doc!.id}_${DateTime.now().millisecondsSinceEpoch}.mp4';
-    final mc = p.audio.tracks.expand((t) => t.clips).where((c) => c.assetId == p.musicAssetId).firstOrNull;
-    try {
-      await Services.i.videoRenderer().render(p, resolver, VideoExportSettings(width: (p.width * scale / 2).round() * 2, height: (p.height * scale / 2).round() * 2, fps: math.min(p.fps, 24), preset: 'ultrafast', crf: 30, encoder: EncoderPreference.auto), out,
-          music: music, musicOffset: mc == null ? 0 : mc.position - mc.srcIn, onProgress: (t) => setState(() => previewProgress = (t / p.duration).clamp(0, 1)));
-      setState(() => previewPath = out);
-    } catch (e) {
-      if (mounted) toast(context, 'Podgląd: $e', error: true);
-    } finally {
-      if (mounted) setState(() => previewBusy = false);
-    }
-  }
-
   Future<void> _export() async {
     final s = await showVideoExportDialog(context, p, initial: doc!.exportSettings['video'] == null ? null : VideoExportSettings.fromJson(jm(doc!.exportSettings['video'])));
     if (s == null || !mounted) return;
@@ -313,7 +350,7 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
                 Expanded(
                   child: Column(children: [
                     _topBar(pro),
-                    Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(8), child: preview)),
+                    Expanded(child: Padding(padding: const EdgeInsets.all(6), child: _previewPane(fill: true))),
                     SizedBox(height: 262, child: timeline),
                   ]),
                 ),
@@ -422,28 +459,75 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
             ),
             Text('${p.width}×${p.height} • ${p.fps.round()} fps • ${fmtTime(p.duration)}', style: const TextStyle(color: WmsColors.muted, fontSize: 12)),
             const SizedBox(width: 8),
-            FilledButton.tonalIcon(onPressed: previewBusy ? null : _renderPreview, icon: const Icon(Icons.preview), label: Text(tr('preview'))),
+            FilledButton.tonalIcon(onPressed: previewBusy ? null : _renderPreview, icon: const Icon(Icons.high_quality), label: const Text('Dokładny podgląd')),
             const SizedBox(width: 6),
             FilledButton.icon(onPressed: _export, icon: const Icon(Icons.movie_creation), label: Text(tr('render'))),
           ]),
         ),
       );
 
-  Widget _previewPane() {
-    final aspect = p.width / p.height;
+  /// FotoPlay-style editor preview: real-time, with Play/Pause and scrub.
+  /// The exact FFmpeg render is still available as „Dokładny podgląd”.
+  Widget _previewPane({bool fill = false}) {
+    final c = pc!;
+    final live = LivePreview(key: ValueKey(doc!.id), controller: c, safeZones: safeZones);
+    if (fill) {
+      // desktop: preview + controls take the space left above the timeline
+      return Column(children: [Expanded(child: live), _toolStrip()]);
+    }
     return Column(children: [
-      ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.5),
-        child: AspectRatio(
-          aspectRatio: aspect * 0.92,
-          child: Stack(children: [
-            Positioned.fill(child: previewPath == null ? Container(color: Colors.black, alignment: Alignment.center, child: const Text('Naciśnij „Podgląd”, aby wygenerować rzeczywisty podgląd\n(ten sam silnik co końcowy render, niższa rozdzielczość)', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54))) : PreviewPlayer(key: ValueKey(previewPath), path: previewPath, aspect: aspect)),
-            if (safeZones) Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: SafeZonePainter(p.height > p.width)))),
-            if (previewBusy) Positioned.fill(child: Container(color: Colors.black54, alignment: Alignment.center, child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(value: previewProgress > 0 ? previewProgress : null), const SizedBox(height: 8), Text('Podgląd ${(previewProgress * 100).round()}%')]))),
-          ]),
+      ConstrainedBox(constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.55), child: live),
+      _toolStrip(),
+    ]);
+  }
+
+  Future<void> _renderPreview() async {
+    if (doc == null || p.duration <= 0) return;
+    await pc?.pause();
+    setState(() {
+      previewBusy = true;
+      previewProgress = 0;
+    });
+    final scale = Services.i.settings.get<num>('previewScale').toDouble();
+    final out = '${Services.i.store.cacheDir.path}/preview_${doc!.id}_${DateTime.now().millisecondsSinceEpoch}.mp4';
+    final progress = ValueNotifier<double>(0);
+    if (!mounted) return;
+    final dlg = showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Dokładny podgląd (silnik eksportu)'),
+        content: SizedBox(
+          width: 420,
+          child: ValueListenableBuilder<double>(
+            valueListenable: progress,
+            builder: (_, v, _) => Column(mainAxisSize: MainAxisSize.min, children: [LinearProgressIndicator(value: v > 0 ? v : null), const SizedBox(height: 8), Text('Renderowanie ${(v * 100).round()}% – długie projekty są dzielone na segmenty, więc postęp rośnie stopniowo.')]),
+          ),
         ),
       ),
-    ]);
+    );
+    previewPath = null;
+    try {
+      await Services.i.videoRenderer().render(p, resolver, VideoExportSettings(width: (p.width * scale / 2).round() * 2, height: (p.height * scale / 2).round() * 2, fps: math.min(p.fps, 24), preset: 'ultrafast', crf: 30, encoder: EncoderPreference.auto), out,
+          music: music, musicOffset: _musicOffset, onProgress: (t) => progress.value = (t / p.duration).clamp(0, 1));
+      previewPath = out;
+    } catch (e) {
+      if (mounted) toast(context, 'Podgląd: $e', error: true);
+    } finally {
+      if (mounted) setState(() => previewBusy = false);
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+    }
+    await dlg;
+    if (previewPath != null && mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Dokładny podgląd'),
+          content: SizedBox(width: 420, child: PreviewPlayer(key: ValueKey(previewPath), path: previewPath, aspect: p.width / p.height)),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Zamknij'))],
+        ),
+      );
+    }
   }
 
   Widget _timeline() {
@@ -469,7 +553,7 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
         );
     return Card(
       margin: EdgeInsets.zero,
-      child: Column(children: [
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           const SizedBox(width: 8),
           const Icon(Icons.zoom_in, size: 18),
@@ -480,16 +564,25 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
         ]),
         Expanded(
           child: SingleChildScrollView(
+            controller: _tlScroll,
             scrollDirection: Axis.horizontal,
             child: SizedBox(
               width: total * zoom + 120,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                // beat ruler
+              child: Stack(children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                // beat ruler (tap / drag = move the playhead)
                 SizedBox(
-                  height: 14,
+                  height: 18,
                   child: Row(children: [
                     const SizedBox(width: 70),
-                    Expanded(child: CustomPaint(painter: _RulerPainter(total, zoom, music?.beats ?? p.beatMarkers))),
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTapDown: (d) => pc?.seek(d.localPosition.dx / zoom),
+                        onHorizontalDragUpdate: (d) => pc?.seek(d.localPosition.dx / zoom),
+                        child: CustomPaint(painter: _RulerPainter(total, zoom, music?.beats ?? p.beatMarkers)),
+                      ),
+                    ),
                   ]),
                 ),
                 SizedBox(
@@ -510,7 +603,10 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
                             key: ValueKey(cl.id),
                             index: i,
                             child: GestureDetector(
-                              onTap: () => setState(() => {selKind = _SelKind.clip, sel = i}),
+                              onTap: () {
+                                setState(() => {selKind = _SelKind.clip, sel = i});
+                                if (!(pc?.playing ?? false)) pc?.seek(starts[i] + 0.01);
+                              },
                               child: Container(
                                 width: w,
                                 margin: const EdgeInsets.only(right: 1),
@@ -538,7 +634,18 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
                   for (final t in p.audio.tracks)
                     for (final c in t.clips) (c.position, c.end, '${t.name}: ${doc!.assets[c.assetId]?.name ?? ''}', () => setState(() => {selKind = _SelKind.audio, sel = 0}), selKind == _SelKind.audio),
                 ], color: WmsColors.accent),
-                
+              ]),
+              // playhead
+              if (pc != null)
+                ListenableBuilder(
+                  listenable: pc!,
+                  builder: (_, _) => Positioned(
+                    left: 70 + pc!.position * zoom - 1,
+                    top: 0,
+                    bottom: 0,
+                    child: IgnorePointer(child: Container(width: 2, color: Colors.redAccent)),
+                  ),
+                ),
               ]),
             ),
           ),
