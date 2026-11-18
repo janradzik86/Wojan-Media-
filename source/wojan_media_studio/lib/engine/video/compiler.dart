@@ -244,6 +244,7 @@ class VideoCompiler {
     post.add('tpad=stop_mode=clone:stop_duration=${fsec(dur)}');
     post.add('trim=duration=${fsec(dur)}');
     post.add('setpts=PTS-STARTPTS');
+    post.add('settb=AVTB');
     if (c.animIn == 'fade') post.add('fade=t=in:st=0:d=${fsec(math.min(c.animInDur, dur / 2))}');
     if (c.animOut == 'fade') post.add('fade=t=out:st=${fsec(dur - math.min(c.animOutDur, dur / 2))}:d=${fsec(math.min(c.animOutDur, dur / 2))}');
     final o = b.label('seg');
@@ -260,7 +261,7 @@ class VideoCompiler {
         _ => ('0', '-H*$e'),
       };
       final bg = b.label('sbg'), so = b.label('sl');
-      b.chains.add('color=c=$_bg:s=${W}x$H:r=$fpsS:d=${fsec(dur)}[$bg];[$bg][$cur]overlay=x=\'$xe\':y=\'$ye\':eof_action=pass,setsar=1[$so]');
+      b.chains.add('color=c=$_bg:s=${W}x$H:r=$fpsS:d=${fsec(dur)}[$bg];[$bg][$cur]overlay=x=\'$xe\':y=\'$ye\':eof_action=pass,setsar=1,settb=AVTB[$so]');
       cur = so;
     }
     // Clip audio
@@ -408,11 +409,11 @@ class VideoCompiler {
         final prev = p.clips[i - 1];
         final out = b.label('x');
         if (prev.transition.isCut) {
-          b.chains.add('[$cur][${segs[i]}]concat=n=2:v=1:a=0[$out]');
+          b.chains.add('[$cur][${segs[i]}]concat=n=2:v=1:a=0,settb=AVTB[$out]');
           acc += p.clips[i].duration;
         } else {
           final td = p.effectiveTransition(i - 1);
-          b.chains.add('[$cur][${segs[i]}]xfade=${xfadeOptions(prev.transition.type)}:duration=${fsec(td)}:offset=${fsec(acc - td)}[$out]');
+          b.chains.add('[$cur][${segs[i]}]xfade=${xfadeOptions(prev.transition.type)}:duration=${fsec(td)}:offset=${fsec(acc - td)},settb=AVTB[$out]');
           acc += p.clips[i].duration - td;
         }
         cur = out;
