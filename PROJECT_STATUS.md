@@ -20,8 +20,8 @@ Wcześniej: 2026-11-18: `flutter test test/engine -j 1` → **30/30 PASSED**; te
 ## Wyniki kompilacji
 | Produkt | Status | Lokalizacja | Rozmiar | SHA-256 |
 |---|---|---|---|---|
-| WoJan-Media-Studio-Release.apk | ✅ zbudowany, podpisany (v2), zweryfikowany apksigner | `builds/android/` (nie w git – artefakt) | 134038868 B | `06e7681ee26e8381afea0659a7943fab07d120e6632781a7cbc178d1d3c9f9cb` |
-| WoJan-Media-Studio-Source.zip | ✅ | `builds/` | 13 233 041 B | `f85bd99db21e2d46d6f3a539a517a1f8373fc4214719385dd02066c4c823a6ad` |
+| WoJan-Media-Studio-Release.apk | ✅ 1.0.3 (4), podpisany (v2), zweryfikowany apksigner | `builds/android/` (nie w git – artefakt) | 139979689 B | `780cb6eedc2bc3cdc9d222dd9d0c1a92a2367e1990ea0a738138afa18587bc64` |
+| WoJan-Media-Studio-Source.zip | ✅ (bez sekretów – sprawdzone) | `builds/` | 22388104 B | `dce53fb09f18eaeb92a5f19fdaa22954dc92bc46d4abfe109aadc981c4c3e52e` |
 | WoJan-Media-Studio-Setup.exe | ❌ ZABLOKOWANY | – | – | – |
 | WoJan-Media-Studio-Portable.zip | ❌ ZABLOKOWANY (j.w.) | – | – | – |
 
