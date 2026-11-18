@@ -14,6 +14,7 @@ import '../util/json_util.dart';
 import 'model.dart';
 import 'transitions.dart';
 import 'vfx.dart';
+import 'segments.dart';
 import 'visualizer.dart';
 
 /// Options controlling a compile (preview vs final).
@@ -23,7 +24,17 @@ class CompileOptions {
   final String fontsDir;
   final AudioAnalysis? music; // analysis of main music for reactive fx
   final double musicOffset; // where music starts on the timeline
-  CompileOptions({this.scale = 1, this.fps, required this.fontsDir, this.music, this.musicOffset = 0});
+  /// Segment rendering: global timeline time of this (mini) project's t=0.
+  final double timeOffset;
+  /// Segment rendering: render only the visual clip track (no audio/layers).
+  final bool clipsOnly;
+  /// Segment rendering: output only frames [trimStartFrame, trimEndFrame).
+  final int? trimStartFrame, trimEndFrame;
+  /// Final pass: pre-rendered visual track (FFmpeg concat list or video file)
+  /// replacing the clip track; layers, grade and audio are composed on it.
+  final String? baseVideo;
+  final bool baseIsConcatList;
+  CompileOptions({this.scale = 1, this.fps, required this.fontsDir, this.music, this.musicOffset = 0, this.timeOffset = 0, this.clipsOnly = false, this.trimStartFrame, this.trimEndFrame, this.baseVideo, this.baseIsConcatList = true});
 }
 
 class CompiledGraph {
@@ -86,45 +97,9 @@ class VideoCompiler {
   }
 
   // --------------------------------------------------------------- motion
-  /// Converts preset into keyframes over [dur].
-  Motion _resolveMotion(Motion m, double dur) {
-    if (m.hasKeyframes || m.preset == MotionPreset.none) return m;
-    final i = m.intensity.clamp(0.0, 1.0);
-    final z = 1 + 0.12 + 0.3 * i;
-    Keyframe k(double t, double v, [Easing e = Easing.easeInOut]) => Keyframe(t, v, e);
-    switch (m.preset) {
-      case MotionPreset.kenBurnsIn:
-        return Motion(zoom: [k(0, 1.0), k(dur, z)], panX: [k(0, 0.5), k(dur, 0.42 + 0.16 * ((dur * 7) % 1))], panY: [k(0, 0.5), k(dur, 0.45)]);
-      case MotionPreset.kenBurnsOut:
-        return Motion(zoom: [k(0, z), k(dur, 1.0)], panX: [k(0, 0.55), k(dur, 0.5)], panY: [k(0, 0.45), k(dur, 0.5)]);
-      case MotionPreset.panLeft:
-        return Motion(zoom: [k(0, z)], panX: [k(0, 1.0), k(dur, 0.0)], panY: [k(0, 0.5)]);
-      case MotionPreset.panRight:
-        return Motion(zoom: [k(0, z)], panX: [k(0, 0.0), k(dur, 1.0)], panY: [k(0, 0.5)]);
-      case MotionPreset.panUp:
-        return Motion(zoom: [k(0, z)], panX: [k(0, 0.5)], panY: [k(0, 1.0), k(dur, 0.0)]);
-      case MotionPreset.panDown:
-        return Motion(zoom: [k(0, z)], panX: [k(0, 0.5)], panY: [k(0, 0.0), k(dur, 1.0)]);
-      case MotionPreset.diagonal:
-        return Motion(zoom: [k(0, z)], panX: [k(0, 0.0), k(dur, 1.0)], panY: [k(0, 0.0), k(dur, 1.0)]);
-      case MotionPreset.zoomInRotate:
-        return Motion(zoom: [k(0, 1.25), k(dur, 1.25 + 0.3 * i)], rotation: [k(0, 0), k(dur, 4 + 8 * i)]);
-      case MotionPreset.zoomOutRotate:
-        return Motion(zoom: [k(0, 1.25 + 0.3 * i), k(dur, 1.25)], rotation: [k(0, 4 + 8 * i), k(dur, 0)]);
-      case MotionPreset.parallax:
-        // 2.5D approximation: simultaneous zoom-in and lateral drift.
-        return Motion(zoom: [k(0, 1.1), k(dur, 1.1 + 0.25 * i)], panX: [k(0, 0.2), k(dur, 0.8)], panY: [k(0, 0.55), k(dur, 0.45)]);
-      case MotionPreset.shake:
-      case MotionPreset.beatPulse:
-        return m; // handled with expressions
-      case MotionPreset.none:
-        return m;
-    }
-  }
-
   /// Applies zoompan/rotate motion. Input is a WxH*k canvas.
   String _motion(String inp, VisualClip c, double dur, int cw, int ch) {
-    final m = _resolveMotion(c.motion, dur);
+    final m = resolveMotion(c.motion, dur);
     final out = b.label('mot');
     final t = '(on/$fpsS)';
     String zExpr;
@@ -189,6 +164,7 @@ class VideoCompiler {
       case ClipKind.video:
         final len = c.srcOut - c.srcIn;
         inputIdx = b.addInput(assets.pathOf(c.assetId!), pre: [
+          '-an',
           if (c.loopVideo) ...['-stream_loop', '-1'],
           '-ss', fsec(c.srcIn),
           if (!c.loopVideo) ...['-t', fsec(len + 0.05)],
@@ -264,18 +240,7 @@ class VideoCompiler {
       b.chains.add('color=c=$_bg:s=${W}x$H:r=$fpsS:d=${fsec(dur)}[$bg];[$bg][$cur]overlay=x=\'$xe\':y=\'$ye\':eof_action=pass,setsar=1,settb=AVTB[$so]');
       cur = so;
     }
-    // Clip audio
-    String? aLabel;
-    if (c.kind == ClipKind.video && p.clipAudio && !c.mute && inputIdx != null && assets.asset(c.assetId!).hasAudio) {
-      final af = <String>['asetpts=PTS-STARTPTS', 'aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo'];
-      if (c.reverse) af.add('areverse');
-      if ((c.speed - 1).abs() > 1e-3) af.addAll(atempoChain(c.speed));
-      final vol = c.volumeDb + p.clipAudioDb;
-      if (vol.abs() > 1e-3) af.add('volume=${FfEscape.num(vol)}dB');
-      af.addAll(['apad', 'atrim=duration=${fsec(dur)}', 'afade=t=in:d=0.02', 'afade=t=out:st=${fsec(math.max(0, dur - 0.05))}:d=0.05']);
-      aLabel = b.label('ca');
-      b.chains.add('[$inputIdx:a]${af.join(',')}[$aLabel]');
-    }
+    final aLabel = opt.clipsOnly ? null : _clipAudio(c, dur);
     return (v: cur, a: aLabel);
   }
 
@@ -379,6 +344,27 @@ class VideoCompiler {
 
   final _extraAudio = <String>[];
 
+  /// Audio of a video clip from its own (audio-only) input.
+  String? _clipAudio(VisualClip c, double dur) {
+    if (c.kind != ClipKind.video || !p.clipAudio || c.mute || c.assetId == null || !assets.asset(c.assetId!).hasAudio) return null;
+    final len = c.srcOut - c.srcIn;
+    final idx = b.addInput(assets.pathOf(c.assetId!), pre: [
+      if (c.loopVideo) ...['-stream_loop', '-1'],
+      '-ss', fsec(c.srcIn),
+      if (!c.loopVideo) ...['-t', fsec(len + 0.05)],
+      '-vn',
+    ]);
+    final af = <String>['asetpts=PTS-STARTPTS', 'aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo'];
+    if (c.reverse) af.add('areverse');
+    if ((c.speed - 1).abs() > 1e-3) af.addAll(atempoChain(c.speed));
+    final vol = c.volumeDb + p.clipAudioDb;
+    if (vol.abs() > 1e-3) af.add('volume=${FfEscape.num(vol)}dB');
+    af.addAll(['apad', 'atrim=duration=${fsec(dur)}', 'afade=t=in:d=0.02', 'afade=t=out:st=${fsec(math.max(0, dur - 0.05))}:d=0.05']);
+    final l = b.label('ca');
+    b.chains.add('[$idx:a]${af.join(',')}[$l]');
+    return l;
+  }
+
   // ---------------------------------------------------------------- build
   CompiledGraph compile() {
     workDir.createSync(recursive: true);
@@ -387,13 +373,32 @@ class VideoCompiler {
     final starts = p.clipStarts();
     String base;
     final clipAudios = <String>[];
-    if (p.clips.isEmpty) {
+    if (opt.baseVideo != null) {
+      final bi = b.addInput(opt.baseVideo!, pre: opt.baseIsConcatList ? ['-f', 'concat', '-safe', '0'] : const []);
+      base = b.label('base');
+      b.chains.add('[$bi:v]setpts=PTS-STARTPTS,fps=$fpsS,format=yuv420p,setsar=1,settb=AVTB[$base]');
+      for (var i = 0; i < p.clips.length; i++) {
+        final a = _clipAudio(p.clips[i], p.clips[i].duration);
+        if (a != null) {
+          final del = b.label('cad');
+          final ms = (starts[i] * 1000).round();
+          b.chains.add('[$a]${ms > 0 ? 'adelay=delays=$ms:all=1' : 'anull'}[$del]');
+          clipAudios.add(del);
+        }
+      }
+      final vd = p.visualDuration;
+      if (total > vd + 1e-3) {
+        final o = b.label('ext');
+        b.chains.add('[$base]tpad=stop_mode=add:stop_duration=${fsec(total - vd)}:color=$_bg[$o]');
+        base = o;
+      }
+    } else if (p.clips.isEmpty) {
       base = b.label('bgc');
       b.chains.add('color=c=$_bg:s=${W}x$H:r=$fpsS:d=${fsec(total)},format=yuv420p,setsar=1[$base]');
     } else {
       final segs = <String>[];
       for (var i = 0; i < p.clips.length; i++) {
-        _clipStart = starts[i];
+        _clipStart = starts[i] + opt.timeOffset;
         final seg = _clipSegment(p.clips[i], p.clips[i].duration);
         segs.add(seg.v);
         if (seg.a != null) {
@@ -424,6 +429,16 @@ class VideoCompiler {
         b.chains.add('[$base]tpad=stop_mode=add:stop_duration=${fsec(total - acc)}:color=$_bg[$o]');
         base = o;
       }
+    }
+    if (opt.clipsOnly) {
+      final fin = b.label('vseg');
+      final tr = opt.trimStartFrame != null || opt.trimEndFrame != null
+          ? 'trim=${opt.trimStartFrame != null ? 'start_frame=${opt.trimStartFrame}' : ''}${opt.trimStartFrame != null && opt.trimEndFrame != null ? ':' : ''}${opt.trimEndFrame != null ? 'end_frame=${opt.trimEndFrame}' : ''},setpts=PTS-STARTPTS,'
+          : '';
+      // Pad with the last frame so rounding to the global frame grid can never
+      // leave a segment one frame short (keeps audio/video in sync).
+      b.chains.add('[$base]fps=$fpsS,tpad=stop_mode=clone:stop_duration=1,${tr}format=yuv420p,setsar=1[$fin]');
+      return CompiledGraph(b.inputs, b.graph, fin, '', total, W, H, F);
     }
     // Global colour grade
     final gg = p.globalGrade.filters(lutPath: p.globalGrade.lutAssetId == null ? null : assets.pathOf(p.globalGrade.lutAssetId!));
@@ -552,13 +567,19 @@ class VideoRenderer {
   }
 
   /// Renders with automatic fallback from hardware to software encoders.
+  /// Projects with clips use the scalable segmented pipeline (memory use does
+  /// not grow with the number of clips; unchanged segments come from cache).
   Future<String> render(VideoProject p, AssetResolver assets, VideoExportSettings s, String out,
-      {AudioAnalysis? music, double musicOffset = 0, ProgressCb? onProgress, CancelToken? cancel, bool preview = false}) async {
+      {AudioAnalysis? music, double musicOffset = 0, ProgressCb? onProgress, CancelToken? cancel, bool preview = false, bool segmented = true}) async {
     await workDir.create(recursive: true);
+    if (p.duration <= 0) throw MediaEngineException('Projekt jest pusty – dodaj zdjęcia, klipy lub muzykę.');
+    if (p.clips.isNotEmpty && segmented) {
+      final seg = SegmentedRenderer(runner: runner, workDir: workDir, cacheDir: Directory('${workDir.path}/../cache_segments').absolute, fontsDir: fontsDir, encoders: availableEncoders);
+      return seg.render(p, assets, s, out, music: music, musicOffset: musicOffset, onProgress: onProgress, cancel: cancel, finalArgs: (g, enc) => buildArgs(g, s, out, enc));
+    }
     final scale = s.width / p.width;
     final g = VideoCompiler(p, assets, workDir, CompileOptions(scale: scale, fps: s.fps, fontsDir: fontsDir, music: music, musicOffset: musicOffset)).compile();
     final encs = s.container == VideoContainer.gif ? ['gif'] : s.encoderCandidates(await availableEncoders());
-    if (encs.isEmpty) throw MediaEngineException('Brak dostępnego enkodera dla ${s.codec.name}');
     MediaEngineException? last;
     final tried = <String>[];
     for (final enc in encs) {
@@ -567,7 +588,6 @@ class VideoRenderer {
       if (r.ok) return enc;
       last = MediaEngineException('Renderowanie nie powiodło się (enkoder $enc)', r.errorSummary);
       tried.add(enc);
-      // try the next candidate (hardware → software → built-in fallback)
     }
     throw MediaEngineException('Renderowanie nie powiodło się – wypróbowano enkodery: ${tried.join(', ')}', last?.details);
   }

@@ -850,3 +850,41 @@ class VideoProject {
     }
   }
 }
+
+/// Converts a motion preset into keyframes over [dur] (shared by the FFmpeg
+/// compiler and the real-time preview so both move identically).
+Motion resolveMotion(Motion m, double dur) {
+  if (m.hasKeyframes || m.preset == MotionPreset.none) return m;
+  final i = m.intensity.clamp(0.0, 1.0);
+  final z = 1 + 0.12 + 0.3 * i;
+  Keyframe k(double t, double v, [Easing e = Easing.easeInOut]) => Keyframe(t, v, e);
+  switch (m.preset) {
+    case MotionPreset.kenBurnsIn:
+      return Motion(zoom: [k(0, 1.0), k(dur, z)], panX: [k(0, 0.5), k(dur, 0.42 + 0.16 * ((dur * 7) % 1))], panY: [k(0, 0.5), k(dur, 0.45)]);
+    case MotionPreset.kenBurnsOut:
+      return Motion(zoom: [k(0, z), k(dur, 1.0)], panX: [k(0, 0.55), k(dur, 0.5)], panY: [k(0, 0.45), k(dur, 0.5)]);
+    case MotionPreset.panLeft:
+      return Motion(zoom: [k(0, z)], panX: [k(0, 1.0), k(dur, 0.0)], panY: [k(0, 0.5)]);
+    case MotionPreset.panRight:
+      return Motion(zoom: [k(0, z)], panX: [k(0, 0.0), k(dur, 1.0)], panY: [k(0, 0.5)]);
+    case MotionPreset.panUp:
+      return Motion(zoom: [k(0, z)], panX: [k(0, 0.5)], panY: [k(0, 1.0), k(dur, 0.0)]);
+    case MotionPreset.panDown:
+      return Motion(zoom: [k(0, z)], panX: [k(0, 0.5)], panY: [k(0, 0.0), k(dur, 1.0)]);
+    case MotionPreset.diagonal:
+      return Motion(zoom: [k(0, z)], panX: [k(0, 0.0), k(dur, 1.0)], panY: [k(0, 0.0), k(dur, 1.0)]);
+    case MotionPreset.zoomInRotate:
+      return Motion(zoom: [k(0, 1.25), k(dur, 1.25 + 0.3 * i)], rotation: [k(0, 0), k(dur, 4 + 8 * i)]);
+    case MotionPreset.zoomOutRotate:
+      return Motion(zoom: [k(0, 1.25 + 0.3 * i), k(dur, 1.25)], rotation: [k(0, 4 + 8 * i), k(dur, 0)]);
+    case MotionPreset.parallax:
+      // 2.5D approximation: simultaneous zoom-in and lateral drift.
+      return Motion(zoom: [k(0, 1.1), k(dur, 1.1 + 0.25 * i)], panX: [k(0, 0.2), k(dur, 0.8)], panY: [k(0, 0.55), k(dur, 0.45)]);
+    case MotionPreset.shake:
+    case MotionPreset.beatPulse:
+      return m; // handled with expressions
+    case MotionPreset.none:
+      return m;
+  }
+}
+
