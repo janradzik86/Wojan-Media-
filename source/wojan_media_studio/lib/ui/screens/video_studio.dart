@@ -155,6 +155,10 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
       p.musicAssetId = m.id;
     });
     _loadMusic();
+    // One photo (or only photos) + music → film lasts as long as the song.
+    if (p.clips.isNotEmpty && p.clips.every((c) => c.kind != ClipKind.video) && (p.clips.length == 1 || p.visualDuration < p.audioDuration)) {
+      await _fitToAudio(ask: false);
+    }
   }
 
   Future<void> _addOverlay() async {
@@ -185,6 +189,39 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
     recordAt = 0;
     await recorder.start(const RecordConfig(encoder: AudioEncoder.wav, sampleRate: 48000), path: '${Services.i.store.cacheDir.path}/vo_${DateTime.now().millisecondsSinceEpoch}.wav');
     setState(() => recording = true);
+  }
+
+  /// "Dostosuj do długości audio" – timing only, the picture is never distorted.
+  Future<void> _fitToAudio({bool ask = true}) async {
+    if (p.audioDuration <= 0) {
+      toast(context, 'Najpierw dodaj muzykę lub nagranie.');
+      return;
+    }
+    if (p.clips.isEmpty) {
+      toast(context, 'Dodaj zdjęcie lub klip.');
+      return;
+    }
+    var fit = FitMode.blurBackground;
+    if (ask) {
+      final f = await showDialog<FitMode>(
+        context: context,
+        builder: (c) => SimpleDialog(title: Text('Dostosuj do długości audio (${fmtTime(p.audioDuration)})'), children: [
+          const Padding(padding: EdgeInsets.fromLTRB(24, 0, 24, 8), child: Text('Zmieniany jest tylko czas wyświetlania – obraz nie jest rozciągany ani zniekształcany. Jak dopasować kadr do formatu filmu?', style: TextStyle(fontSize: 13))),
+          SimpleDialogOption(onPressed: () => Navigator.pop(c, FitMode.blurBackground), child: const ListTile(leading: Icon(Icons.blur_on), title: Text('Całe zdjęcie na rozmytym tle'), subtitle: Text('zalecane – nic nie jest ucinane'))),
+          SimpleDialogOption(onPressed: () => Navigator.pop(c, FitMode.cover), child: const ListTile(leading: Icon(Icons.crop), title: Text('Wypełnij kadr'), subtitle: Text('przycina brzegi, bez pasów'))),
+          SimpleDialogOption(onPressed: () => Navigator.pop(c, FitMode.contain), child: const ListTile(leading: Icon(Icons.fit_screen), title: Text('Zmieść z pasami'), subtitle: Text('całe zdjęcie, pasy w kolorze tła'))),
+        ]),
+      );
+      if (f == null) return;
+      fit = f;
+    }
+    _edit(() {
+      for (final c in p.clips) {
+        if (c.kind != ClipKind.video || ask) c.fit = fit;
+      }
+      p.fitToAudio(fit: fit);
+    });
+    toast(context, 'Film dopasowano do długości audio: ${fmtTime(p.duration)}');
   }
 
   // ------------------------------------------------------------ beat tools
@@ -372,6 +409,7 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
                 ..style = TextStyleSpec(size: 52).toJson());
             }),
             IconButton(tooltip: 'Cięcia do rytmu muzyki', icon: const Icon(Icons.av_timer), onPressed: _snapCutsToBeats),
+            TextButton.icon(onPressed: _fitToAudio, icon: const Icon(Icons.straighten), label: const Text('Dostosuj do długości audio')),
             IconButton(tooltip: 'Strefy bezpieczne', icon: Icon(safeZones ? Icons.crop_free : Icons.crop_din), onPressed: () => setState(() => safeZones = !safeZones)),
             PopupMenuButton<(int, int)>(
               tooltip: 'Format',
@@ -882,7 +920,7 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
                 TextButton.icon(onPressed: () => _edit(() => t.clips.remove(c)), icon: const Icon(Icons.delete_outline), label: const Text('Usuń')),
               ]),
           ]),
-        TextButton.icon(onPressed: () => _edit(() => p.fixedDuration = p.audio.duration), icon: const Icon(Icons.straighten), label: const Text('Długość filmu = długość muzyki')),
+        TextButton.icon(onPressed: _fitToAudio, icon: const Icon(Icons.straighten), label: const Text('Dostosuj do długości audio (bez zniekształceń)')),
         if (p.fixedDuration != null) TextButton(onPressed: () => _edit(() => p.fixedDuration = null), child: const Text('Długość automatyczna')),
       ]);
 }

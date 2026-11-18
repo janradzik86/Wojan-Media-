@@ -793,6 +793,56 @@ class VideoProject {
     }
   }
 
+  /// Duration of the music/audio tracks (0 if none).
+  double get audioDuration => audio.duration;
+
+  /// Stretches the TIMING (never the pixels) of the visual track so the film
+  /// lasts exactly as long as the audio. Photos get proportionally longer
+  /// display times (one photo = whole song); video clips keep their speed –
+  /// if they are longer than the audio the film is trimmed, if shorter the
+  /// last clip loops. Images are never stretched: [FitMode.stretch] is
+  /// replaced by [fit] (default: blurred background, whole picture visible).
+  /// Returns false when there is no audio or no visual clip.
+  bool fitToAudio({FitMode fit = FitMode.blurBackground, double? target}) {
+    final t = target ?? audioDuration;
+    if (t <= 0 || clips.isEmpty) return false;
+    for (final c in clips) {
+      if (c.fit == FitMode.stretch) c.fit = fit;
+    }
+    double transitions() {
+      var s = 0.0;
+      for (var i = 0; i < clips.length - 1; i++) {
+        s += effectiveTransition(i);
+      }
+      return s;
+    }
+
+    final images = clips.where((c) => c.kind != ClipKind.video).toList();
+    final videoLen = clips.where((c) => c.kind == ClipKind.video).fold(0.0, (s, c) => s + c.duration);
+    if (images.isNotEmpty) {
+      // iterate: transition lengths depend on clip lengths
+      for (var k = 0; k < 4; k++) {
+        final imgLen = images.fold(0.0, (s, c) => s + c.imageDuration);
+        final need = t + transitions() - videoLen;
+        if (need <= 0.1 * images.length || imgLen <= 0) break;
+        final f = need / imgLen;
+        for (final c in images) {
+          c.imageDuration = (c.imageDuration * f).clamp(0.3, 36000.0);
+        }
+      }
+    } else if (visualDuration < t) {
+      final last = clips.last;
+      last.loopVideo = true;
+      last.imageDuration = last.duration + (t - visualDuration);
+    }
+    // Long single shots: keep camera motion gentle over the whole song.
+    for (final c in images) {
+      if (c.imageDuration > 20 && c.motion.intensity > 0.35) c.motion.intensity = 0.35;
+    }
+    fixedDuration = t;
+    return true;
+  }
+
   /// Sets display duration for all photos.
   void setAllImageDurations(double d) {
     for (final c in clips) {

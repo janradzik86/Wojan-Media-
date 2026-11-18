@@ -5,3 +5,10 @@ Pierwsze wydanie: silnik multimedialny (FFmpeg 8.1 / FFmpegKit), Studio Audio (e
 
 ## 1.0.1 – 2026-11-18
 * **Naprawa: „Brak dostępnego enkodera dla h264” na Androidzie.** Lista enkoderów z FFmpegKit była odczytywana z niekompletnego (asynchronicznego) logu, a filtr odrzucał wszystkie kandydaty. Teraz: pełny log sesji (`getAllLogsAsString`), odporne parsowanie, przy niepewnej liście próbowane są wszystkie enkodery (MediaCodec → libx264 → libopenh264 → wbudowany mpeg4), fallback nie zatrzymuje się po pierwszym błędzie; to samo w Konwerterze. Testy regresyjne `test/engine/encoder_test.dart`.
+
+## 1.0.2 – 2026-11-18
+* **Nowe: „Dostosuj do długości audio”** (Studio Wideo – pasek narzędzi i ustawienia projektu; Szybki Teledysk). Zmienia wyłącznie czas wyświetlania – obraz nigdy nie jest rozciągany: do wyboru całe zdjęcie na rozmytym tle (domyślnie), wypełnienie kadru z przycięciem lub pasy. Zdjęcia wydłużane proporcjonalnie, klipy wideo zachowują prędkość (krótki klip jest zapętlany).
+* Dodanie muzyki do projektu z jednym zdjęciem (lub samymi zdjęciami krótszymi niż utwór) automatycznie dopasowuje film do długości audio.
+* Szybki Teledysk z jednym zdjęciem: jedno ciągłe ujęcie na cały utwór (łagodny Ken Burns / pulsowanie do bitu) zamiast powtarzania tego samego kadru.
+* Logowanie Google: przycisk jest nieaktywny i wyświetla czytelną informację, gdy w kompilacji brak identyfikatora OAuth (zamiast wyjątku `serverClientId must be provided`); błędy Google tłumaczone na komunikaty po polsku.
+* Testy: `test/engine/fit_audio_test.dart` (4 testy, w tym render 21 s z jednego zdjęcia 4:3 w 9:16 bez zniekształceń).

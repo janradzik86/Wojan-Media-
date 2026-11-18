@@ -1,2 +1,2 @@
-a3a50b8553d5fe7e7d53228868af3d646e29db286ee8fa27a54ea8f3cbea1101  WoJan-Media-Studio-Release.apk
+06e7681ee26e8381afea0659a7943fab07d120e6632781a7cbc178d1d3c9f9cb  WoJan-Media-Studio-Release.apk
 f85bd99db21e2d46d6f3a539a517a1f8373fc4214719385dd02066c4c823a6ad  WoJan-Media-Studio-Source.zip

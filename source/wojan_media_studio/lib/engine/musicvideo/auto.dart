@@ -183,7 +183,25 @@ class MusicVideoGenerator {
       return c;
     }
 
-    switch (r.mode) {
+    // A single still image: one continuous shot for the whole audio instead
+    // of fake cuts between identical frames (picture is never distorted).
+    final singleStill = visuals.length == 1 && visuals.first.kind != MediaKind.video &&
+        !{MusicVideoMode.staticCover, MusicVideoMode.animatedCover, MusicVideoMode.visualizer}.contains(r.mode);
+    if (singleStill) {
+      final c = clipFor(visuals.first, timelineEnd, 0, motion: st.beatPulse || r.mode == MusicVideoMode.beatSync ? MotionPreset.beatPulse : MotionPreset.kenBurnsIn);
+      c.fit = FitMode.blurBackground;
+      c.motion.intensity = 0.35;
+      c.animIn = 'fade';
+      c.animOut = 'fade';
+      c.animOutDur = 1.5;
+      p.clips.add(c);
+      for (final fx in st.vfx) {
+        p.vfx.add(VfxItem(type: fx, intensity: 0.5, reactive: st.reactiveVfx));
+      }
+    }
+    switch (singleStill ? null : r.mode) {
+      case null:
+        break;
       case MusicVideoMode.staticCover:
         p.clips.add(VisualClip(kind: ClipKind.image, assetId: hasVisuals ? visuals.first.id : null, imageDuration: timelineEnd, fit: FitMode.blurBackground));
         if (!hasVisuals) p.clips.first.kind = ClipKind.color;

@@ -277,7 +277,7 @@ class _PublisherScreenState extends State<PublisherScreen> {
   Widget _platformCard(PlatformProfile p) {
     final f = _fileFor(p.id);
     final issues = info == null ? <PublishIssue>[] : checkForPlatform(p, versions.containsKey(p.id) ? MediaInfo.fromProbe(f, {'format': {'duration': info!.duration}, 'streams': [{'codec_type': 'video', 'width': p.width, 'height': p.height, 'codec_name': 'h264', 'avg_frame_rate': '30/1'}, {'codec_type': 'audio', 'codec_name': 'aac'}]}) : info!, title: title.text, description: desc.text, hashtags: hashtags);
-    final api = p.apiPublishing && OAuthConfig.desktopClientId.isNotEmpty || (p.apiPublishing && Platform.isAndroid);
+    final api = p.apiPublishing && OAuthConfig.configured;
     return Section(title: p.name, trailing: versions.containsKey(p.id) ? const Chip(label: Text('wersja gotowa')) : null, children: [
       for (final i in issues)
         Row(children: [

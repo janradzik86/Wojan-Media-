@@ -17,7 +17,9 @@ class OAuthConfig {
   // still keep it out of the repo and inject it from CI secrets.
   static const desktopClientSecret = String.fromEnvironment('WMS_GOOGLE_DESKTOP_CLIENT_SECRET');
   static const serverClientId = String.fromEnvironment('WMS_GOOGLE_SERVER_CLIENT_ID');
-  static bool get configured => Platform.isAndroid ? serverClientId.isNotEmpty || true : desktopClientId.isNotEmpty;
+  static bool get configured => Platform.isAndroid ? serverClientId.isNotEmpty : desktopClientId.isNotEmpty;
+
+  static const notConfiguredMessage = 'Logowanie Google nie jest jeszcze skonfigurowane w tej wersji aplikacji (brak identyfikatora klienta OAuth projektu Google Cloud). Do czasu konfiguracji użyj synchronizacji przez folder lub eksportu projektu .wojanmedia.';
 }
 
 const scopeDriveAppData = 'https://www.googleapis.com/auth/drive.appdata';
@@ -66,7 +68,7 @@ class GoogleAuth {
     email = await _storage.read(key: 'google_email');
     final s = await _storage.read(key: 'google_scopes');
     if (s != null) _grantedScopes.addAll(s.split(' ').where((e) => e.isNotEmpty));
-    if (Platform.isAndroid && email != null) {
+    if (Platform.isAndroid && email != null && OAuthConfig.configured) {
       await _initAndroid();
       try {
         await GoogleSignIn.instance.attemptLightweightAuthentication();
@@ -78,16 +80,28 @@ class GoogleAuth {
 
   Future<void> _initAndroid() async {
     if (_androidInit) return;
+    if (!OAuthConfig.configured) throw AuthException(OAuthConfig.notConfiguredMessage);
     await GoogleSignIn.instance.initialize(serverClientId: OAuthConfig.serverClientId.isEmpty ? null : OAuthConfig.serverClientId);
     _androidInit = true;
   }
 
   /// Interactive sign-in requesting [scopes] (incremental authorisation).
   Future<void> signIn(List<String> scopes) async {
+    if (!OAuthConfig.configured) throw AuthException(OAuthConfig.notConfiguredMessage);
     if (Platform.isAndroid) {
       await _initAndroid();
-      final acc = await GoogleSignIn.instance.authenticate(scopeHint: scopes);
-      final authz = await acc.authorizationClient.authorizeScopes(scopes);
+      GoogleSignInAccount acc;
+      GoogleSignInClientAuthorization authz;
+      try {
+        acc = await GoogleSignIn.instance.authenticate(scopeHint: scopes);
+        authz = await acc.authorizationClient.authorizeScopes(scopes);
+      } on GoogleSignInException catch (e) {
+        throw AuthException(switch (e.code) {
+          GoogleSignInExceptionCode.canceled => 'Logowanie anulowane',
+          GoogleSignInExceptionCode.clientConfigurationError => 'Błąd konfiguracji klienta Google (sprawdź identyfikatory OAuth i odcisk SHA-1 certyfikatu w Google Cloud). ${e.description ?? ''}',
+          _ => 'Logowanie Google nie powiodło się: ${e.description ?? e.code.name}',
+        });
+      }
       email = acc.email;
       _access = authz.accessToken;
       _expiry = DateTime.now().add(const Duration(minutes: 50));

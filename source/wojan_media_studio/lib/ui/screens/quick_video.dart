@@ -14,6 +14,7 @@ import '../../engine/project/format.dart';
 import '../../engine/publish/platforms.dart';
 import '../../engine/util/json_util.dart';
 import '../../engine/video/model.dart';
+import '../../engine/video/model.dart';
 import '../shell.dart';
 import '../widgets/common.dart';
 import '../widgets/player.dart';
@@ -244,6 +245,13 @@ class _QuickVideoScreenState extends State<QuickVideoScreen> {
           FilledButton.icon(onPressed: music == null || analysis == null || busy ? null : _generate, icon: const Icon(Icons.auto_awesome), label: Text(doc == null ? 'Generuj teledysk' : 'Generuj ponownie')),
           if (doc != null) ...[
             OutlinedButton.icon(onPressed: () => Nav.openProject(doc!), icon: const Icon(Icons.edit), label: const Text('Popraw w Studiu Wideo')),
+            OutlinedButton.icon(onPressed: busy ? null : () async {
+              final v = doc!.video!;
+              v.fitToAudio(fit: FitMode.blurBackground, target: v.audioDuration);
+              await Services.i.store.save(doc!);
+              if (context.mounted) toast(context, 'Dopasowano do długości audio: ${fmtTime(v.duration)}');
+              await _preview();
+            }, icon: const Icon(Icons.straighten), label: const Text('Dostosuj do długości audio')),
             FilledButton.icon(onPressed: busy ? null : () async {
               final s = await showVideoExportDialog(context, doc!.video!, initial: VideoExportSettings.fromJson(jm(doc!.exportSettings['video'])));
               if (s != null && context.mounted) await queueVideoRender(context, doc!, s);

@@ -75,8 +75,8 @@ class _SyncScreenState extends State<SyncScreen> {
         ] else ...[
           const Text('Zaloguj się tym samym kontem Google na telefonie i komputerze. Projekty, materiały, szablony i ustawienia zsynchronizują się automatycznie – bez konfiguracji serwerów, portów ani kluczy.'),
           const SizedBox(height: 8),
-          FilledButton.icon(onPressed: _login, icon: const Icon(Icons.login), label: const Text('Zaloguj przez Google')),
-          if (!OAuthConfig.configured) const Padding(padding: EdgeInsets.only(top: 6), child: Text('Ta kompilacja nie zawiera identyfikatora klienta OAuth – logowanie Google będzie niedostępne do czasu jednorazowej konfiguracji przez właściciela (docs/SYNC_ARCHITECTURE.md). Możesz użyć synchronizacji przez folder.', style: TextStyle(color: WmsColors.warn, fontSize: 12))),
+          FilledButton.icon(onPressed: OAuthConfig.configured ? _login : null, icon: const Icon(Icons.login), label: const Text('Zaloguj przez Google')),
+          if (!OAuthConfig.configured) const Padding(padding: EdgeInsets.only(top: 6), child: Text(OAuthConfig.notConfiguredMessage, style: TextStyle(color: WmsColors.warn, fontSize: 12))),
         ],
       ]),
       Section(title: 'Alternatywa: folder synchronizowany', children: [
