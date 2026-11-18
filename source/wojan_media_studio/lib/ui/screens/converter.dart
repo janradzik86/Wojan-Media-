@@ -74,8 +74,12 @@ class _ConverterScreenState extends State<ConverterScreen> {
           s.audioBitrateKbps = total > 600 ? 128 : 64;
           s.bitrateKbps = (total - s.audioBitrateKbps).clamp(150, 100000);
         }
-        final enc = s.encoderCandidates(await Services.i.videoRenderer().availableEncoders()).last;
-        await r.run([...range, '-i', input!, '-vf', '$scaleExpr,fps=${FfEscape.num(fps)},format=yuv420p', ...s.videoArgs(enc), ...s.audioArgs(), out], onProgress: prog, cancel: cancel, what: 'Konwersja nie powiodła się');
+        RunResult? res;
+        for (final enc in s.encoderCandidates(await Services.i.videoRenderer().availableEncoders())) {
+          res = await r.ffmpeg([...range, '-i', input!, '-vf', '$scaleExpr,fps=${FfEscape.num(fps)},format=yuv420p', ...s.videoArgs(enc), ...s.audioArgs(), out], onProgress: prog, cancel: cancel);
+          if (res.ok || res.cancelled) break;
+        }
+        if (res == null || !res.ok) throw MediaEngineException('Konwersja nie powiodła się', res?.errorSummary);
       }
       if (mounted) Navigator.push(context, MaterialPageRoute(builder: (_) => RenderResultScreen(path: out)));
     } catch (e) {

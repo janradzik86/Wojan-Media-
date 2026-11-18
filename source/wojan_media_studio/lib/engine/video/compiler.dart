@@ -511,12 +511,10 @@ class VideoRenderer {
   Future<Set<String>> availableEncoders() async {
     if (_encoders != null) return _encoders!;
     final r = await runner.ffmpeg(['-encoders']);
-    final set = <String>{};
-    for (final l in r.log.split('\n')) {
-      final m = RegExp(r'^\s*[VAS][F.][S.][X.][B.][D.]\s+(\S+)').firstMatch(l);
-      if (m != null) set.add(m.group(1)!);
-    }
-    return _encoders = set;
+    final set = parseEncoderList(r.log);
+    // Only cache a plausible, complete list; otherwise retry next time.
+    if (set.length >= 10) _encoders = set;
+    return set;
   }
 
   List<String> buildArgs(CompiledGraph g, VideoExportSettings s, String out, String encoder) {
@@ -562,13 +560,26 @@ class VideoRenderer {
     final encs = s.container == VideoContainer.gif ? ['gif'] : s.encoderCandidates(await availableEncoders());
     if (encs.isEmpty) throw MediaEngineException('Brak dostępnego enkodera dla ${s.codec.name}');
     MediaEngineException? last;
+    final tried = <String>[];
     for (final enc in encs) {
       final r = await runner.ffmpeg(buildArgs(g, s, out, enc), onProgress: onProgress, cancel: cancel);
       if (r.cancelled) throw MediaEngineException('Renderowanie anulowane');
       if (r.ok) return enc;
       last = MediaEngineException('Renderowanie nie powiodło się (enkoder $enc)', r.errorSummary);
-      if (!enc.contains('_')) break; // software encoder failed: no further fallback
+      tried.add(enc);
+      // try the next candidate (hardware → software → built-in fallback)
     }
-    throw last!;
+    throw MediaEngineException('Renderowanie nie powiodło się – wypróbowano enkodery: ${tried.join(', ')}', last?.details);
   }
+}
+
+/// Parses `ffmpeg -encoders` output; tolerant to log fragments split across
+/// lines (FFmpegKit delivers logs in chunks).
+Set<String> parseEncoderList(String log) {
+  final set = <String>{};
+  final re = RegExp(r'(?:^|\s)[VAS][F.][S.][X.][B.][D.]\s+([A-Za-z0-9_\-]+)', multiLine: true);
+  for (final m in re.allMatches(log)) {
+    set.add(m.group(1)!);
+  }
+  return set;
 }

@@ -1,6 +1,6 @@
 # PROJECT_STATUS – WoJan Media Studio
 
-**Wersja:** 1.0.0 (build 1) • **Aktualizacja:** 2026-11-18 • **Gałąź:** `ccr-752ca9db-2bv10n`
+**Wersja:** 1.0.1 (build 2) • **Aktualizacja:** 2026-11-18 • **Gałąź:** `ccr-752ca9db-2bv10n`
 
 ## Aktualny etap
 Etapy 1–17 wykonane; etap 18 (produkcyjne kompilacje) – **Android ukończony, Windows zablokowany**; etap 19 (test instalatorów na urządzeniach) – niewykonalny w tym środowisku; etap 20 – ten raport.
@@ -18,7 +18,7 @@ Etapy 1–17 wykonane; etap 18 (produkcyjne kompilacje) – **Android ukończony
 ## Wyniki kompilacji
 | Produkt | Status | Lokalizacja | Rozmiar | SHA-256 |
 |---|---|---|---|---|
-| WoJan-Media-Studio-Release.apk | ✅ zbudowany, podpisany (v2), zweryfikowany apksigner | `builds/android/` (nie w git – artefakt) | 133 956 716 B | `c5e8bf0316ea0bc247befb013303a5d508105bd341b503949ef374f892f8168e` |
+| WoJan-Media-Studio-Release.apk | ✅ zbudowany, podpisany (v2), zweryfikowany apksigner | `builds/android/` (nie w git – artefakt) | 134038868 B | `a3a50b8553d5fe7e7d53228868af3d646e29db286ee8fa27a54ea8f3cbea1101` |
 | WoJan-Media-Studio-Source.zip | ✅ | `builds/` | 13 233 041 B | `f85bd99db21e2d46d6f3a539a517a1f8373fc4214719385dd02066c4c823a6ad` |
 | WoJan-Media-Studio-Setup.exe | ❌ ZABLOKOWANY | – | – | – |
 | WoJan-Media-Studio-Portable.zip | ❌ ZABLOKOWANY (j.w.) | – | – | – |

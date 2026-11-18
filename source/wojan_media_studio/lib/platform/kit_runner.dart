@@ -26,9 +26,12 @@ class KitRunner extends MediaRunner {
       full,
       (s) async {
         final rc = await s.getReturnCode();
-        done.complete(RunResult(rc?.getValue() ?? -1, buf.toString(), cancelled: ReturnCode.isCancel(rc)));
+        // Log callbacks are asynchronous and may arrive after completion –
+        // read the complete session log (waits for pending entries).
+        final all = await s.getAllLogsAsString(5000) ?? '';
+        done.complete(RunResult(rc?.getValue() ?? -1, all.length >= buf.length ? all : buf.toString(), cancelled: ReturnCode.isCancel(rc)));
       },
-      (log) => buf.writeln(log.getMessage()),
+      (log) => buf.write(log.getMessage()),
       (stat) {
         final t = stat.getTime();
         if (onProgress != null && t > 0) onProgress(t / 1000.0);

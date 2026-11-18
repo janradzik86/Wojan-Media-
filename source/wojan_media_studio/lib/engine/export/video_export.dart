@@ -111,14 +111,27 @@ class VideoExportSettings {
         break;
     }
     final sw = switch (codec) {
-      VideoCodec.h264 => ['libx264', 'libopenh264', 'h264'],
+      VideoCodec.h264 => ['libx264', 'libopenh264'],
       VideoCodec.h265 => ['libx265', 'libkvazaar'],
       VideoCodec.vp9 => ['libvpx-vp9'],
       VideoCodec.prores => ['prores_ks', 'prores'],
     };
+    // The encoder list may be unknown or incomplete (e.g. truncated logs):
+    // then every candidate is tried and the renderer falls back at runtime.
+    final known = available.length >= 10;
+    bool ok(String e) => !known || available.contains(e);
     final out = <String>[];
-    if (encoder != EncoderPreference.software) out.addAll(hw.where(available.contains));
-    if (encoder != EncoderPreference.hardware || out.isEmpty) out.addAll(sw.where((e) => available.isEmpty || available.contains(e)));
+    if (encoder != EncoderPreference.software) out.addAll(hw.where(ok));
+    if (encoder != EncoderPreference.hardware || out.isEmpty) out.addAll(sw.where(ok));
+    // Last resort built into every FFmpeg build (always produces a file).
+    final lastResort = switch (codec) {
+      VideoCodec.vp9 => ['libvpx', 'mpeg4'],
+      VideoCodec.prores => ['mpeg4'],
+      _ => ['mpeg4'],
+    };
+    for (final e in lastResort) {
+      if (!out.contains(e)) out.add(e);
+    }
     return out;
   }
 
@@ -138,6 +151,10 @@ class VideoExportSettings {
         return ['-c:v', enc, '-profile:v', '2', '-pix_fmt', 'yuv422p10le'];
       case 'libopenh264':
         return ['-c:v', 'libopenh264', '-b:v', '${rate}k', '-pix_fmt', 'yuv420p'];
+      case 'mpeg4':
+        return ['-c:v', 'mpeg4', '-q:v', '${(crf / 6).round().clamp(2, 8)}', '-pix_fmt', 'yuv420p', if (container == VideoContainer.mp4 || container == VideoContainer.mov) ...['-movflags', '+faststart']];
+      case 'libvpx':
+        return ['-c:v', 'libvpx', '-b:v', '${rate}k', '-pix_fmt', 'yuv420p'];
       default:
         // hardware encoders: bitrate based
         return ['-c:v', enc, '-b:v', '${rate}k', '-pix_fmt', enc.endsWith('_qsv') ? 'nv12' : 'yuv420p', if (container == VideoContainer.mp4 || container == VideoContainer.mov) ...['-movflags', '+faststart']];
