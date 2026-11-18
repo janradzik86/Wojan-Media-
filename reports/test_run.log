@@ -4,47 +4,55 @@
 📎
 00:00 +0: loading /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart
 00:00 +0: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: (setUpAll)
-00:03 +0: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart: (setUpAll)
-00:03 +1: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart: (setUpAll)
-00:03 +1: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: every mode × sample of styles renders a real file
-01:46 +1: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart: mandatory video scenario: 9:16 music video 1080x1920 with fx, transitions, PL captions
-rendered with libx264 in 102s, duration 16.0
-01:52 +2: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: every mode × sample of styles renders a real file
-02:35 +3: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: every mode × sample of styles renders a real file
-04:43 +4: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart: every vfx, motion and visualizer renders
-04:54 +5: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
-04:54 +6: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
-04:54 +7: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
-04:54 +8: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
-04:57 +9: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
-04:57 +10: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
-04:57 +11: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
-04:57 +12: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
-unhandled error during finalization of test:
-/home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart
-TestDeviceException(Shell subprocess crashed with SIGTERM (-15).)
-#0      FlutterTesterTestDevice.finished (package:flutter_tools/src/test/flutter_tester_device.dart:255:5)
-<asynchronous suspension>
-#1      FlutterTesterTestDevice.kill (package:flutter_tools/src/test/flutter_tester_device.dart:237:5)
-<asynchronous suspension>
-#2      FlutterPlatform._startTest.<anonymous closure> (package:flutter_tools/src/test/flutter_platform.dart:696:9)
-<asynchronous suspension>
-#3      FlutterPlatform._startTest.finalize (package:flutter_tools/src/test/flutter_platform.dart:597:11)
-<asynchronous suspension>
-#4      FlutterPlatform._startTest (package:flutter_tools/src/test/flutter_platform.dart:770:7)
-<asynchronous suspension>
-
-unhandled error during finalization of test:
-/home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart
-TestDeviceException(Shell subprocess crashed with SIGTERM (-15).)
-#0      FlutterTesterTestDevice.finished (package:flutter_tools/src/test/flutter_tester_device.dart:255:5)
-<asynchronous suspension>
-#1      FlutterTesterTestDevice.kill (package:flutter_tools/src/test/flutter_tester_device.dart:237:5)
-<asynchronous suspension>
-#2      FlutterPlatform._startTest.<anonymous closure> (package:flutter_tools/src/test/flutter_platform.dart:696:9)
-<asynchronous suspension>
-#3      FlutterPlatform._startTest.finalize (package:flutter_tools/src/test/flutter_platform.dart:597:11)
-<asynchronous suspension>
-#4      FlutterPlatform._startTest (package:flutter_tools/src/test/flutter_platform.dart:770:7)
-<asynchronous suspension>
-
+00:02 +0: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: cuts land exactly on detected beats
+00:02 +1: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: every mode × sample of styles renders a real file
+03:47 +2: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: all 20 styles generate valid projects and render
+06:36 +3: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/musicvideo_test.dart: (tearDownAll)
+06:36 +3: loading /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart
+06:37 +3: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart: (setUpAll)
+06:40 +3: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart: mandatory video scenario: 9:16 music video 1080x1920 with fx, transitions, PL captions
+rendered with libx264 in 112s, duration 16.0
+08:37 +4: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart: every transition renders
+09:28 +5: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart: every vfx, motion and visualizer renders
+11:38 +6: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/video_test.dart: (tearDownAll)
+11:38 +6: loading /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart
+11:39 +6: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart: (setUpAll)
+11:39 +6: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart: lyrics LRC enhanced / SRT / VTT round trip with Polish characters
+11:39 +7: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart: security filter escaping & archive path traversal protection
+11:39 +8: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart: security project migration v1 -> v2 and newer-version refusal
+11:39 +9: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart: publisher platform checks, hashtags, package, duplicate prevention
+11:41 +10: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart: publisher YouTube resumable upload protocol, token refresh, status confirmation (mock server)
+11:41 +11: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart: publisher Drive appDataFolder resumable upload & ranged download (mock server)
+11:42 +12: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart: updater signed manifest verification and sha256 check
+11:42 +13: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart: render queue & batch queue progress, cancel, retry, disk space guard
+11:55 +14: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart: render queue & batch batch planning pairs songs with covers and targets platforms
+11:55 +15: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/services_test.dart: (tearDownAll)
+11:55 +15: loading /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/audio_test.dart
+11:56 +15: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/audio_test.dart: (setUpAll)
+11:57 +15: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/audio_test.dart: mandatory audio scenario: trim, cut, fades, tempo, volume, mix, export
+11:58 +16: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/audio_test.dart: all effects compile and render (real ffmpeg)
+12:02 +17: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/audio_test.dart: all export formats
+12:04 +18: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/audio_test.dart: edit ops: split, copy/paste, silence, mute, duplicate, reorder, loops
+12:05 +19: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/audio_test.dart: corrupted file gives readable error
+12:05 +20: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/audio_test.dart: (tearDownAll)
+12:05 +20: loading /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/sync_test.dart
+12:05 +20: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/sync_test.dart: (setUpAll)
+12:06 +20: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/sync_test.dart: 1-5: save on Windows, auto download on Android, edit there, update on Windows
+12:07 +21: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/sync_test.dart: 6-9: offline editing then reconnect
+12:07 +22: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/sync_test.dart: 10-11: controlled conflict keeps both versions
+12:08 +23: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/sync_test.dart: 12-13: interrupted large upload resumes
+12:17 +24: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/sync_test.dart: 14-17: fresh device recovers everything with zero configuration
+12:17 +25: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/sync_test.dart: templates/presets (kv) sync and conflict, deletion tombstones, device revoke
+12:18 +26: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/sync_test.dart: (tearDownAll)
+12:18 +26: loading /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/analysis_test.dart
+12:19 +26: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/analysis_test.dart: (setUpAll)
+12:19 +26: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/analysis_test.dart: detects BPM 90.0 on real decoded MP3
+bpm=90.0 detected=90.02 beats=30 onsets=43 conf=1.00
+12:19 +27: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/analysis_test.dart: detects BPM 128.0 on real decoded MP3
+bpm=128.0 detected=128.02 beats=43 onsets=49 conf=1.00
+12:20 +28: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/analysis_test.dart: detects BPM 150.0 on real decoded MP3
+bpm=150.0 detected=150.02 beats=50 onsets=70 conf=1.00
+12:21 +29: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/analysis_test.dart: peaks/clipping
+12:21 +30: /home/user/Wojan-Media-/source/wojan_media_studio/test/engine/analysis_test.dart: (tearDownAll)
+12:21 +30: All tests passed!
+EXIT 0
