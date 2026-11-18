@@ -6,7 +6,6 @@ import '../../engine/project/asset.dart';
 import '../../engine/project/format.dart';
 import '../../engine/video/color.dart';
 import '../../engine/video/model.dart';
-import '../../engine/video/vfx.dart';
 import '../../engine/video/visualizer.dart';
 import '../shell.dart';
 import '../widgets/common.dart';

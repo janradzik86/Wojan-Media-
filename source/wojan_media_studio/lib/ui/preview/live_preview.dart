@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart' hide Easing;
@@ -109,6 +110,7 @@ class _Frame extends StatelessWidget {
         base = TransitionView(type: st.transition, progress: st.progress, a: a, b: _clip(st.next!, st.nextLocal), size: size);
       }
     }
+    base = wrapBaseVfx(base, p, t, c, size);
     final gg = gradeMatrix(p.globalGrade);
     if (gg != null) base = ColorFiltered(colorFilter: ColorFilter.matrix(gg), child: base);
     final layers = <Widget>[
@@ -262,7 +264,7 @@ class _Frame extends StatelessWidget {
 
 /// Shim to keep imports tidy.
 class ImageFilterShim {
-  static ImageFilter blur(double s) => ImageFilter.blur(sigmaX: s, sigmaY: s);
+  static ui.ImageFilter blur(double s) => ui.ImageFilter.blur(sigmaX: s, sigmaY: s);
 }
 
 Color hexColor(String h) {

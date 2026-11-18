@@ -161,6 +161,7 @@ class VisualClip {
   double animInDur, animOutDur;
   List<String> vfx; // per-clip looks (vfx ids)
   bool loopVideo; // loop a short video to fill imageDuration
+  String label; // free tag (e.g. 'intro')
 
   VisualClip({
     String? id,
@@ -193,6 +194,7 @@ class VisualClip {
     this.animOutDur = 0.5,
     List<String>? vfx,
     this.loopVideo = false,
+    this.label = '',
   })  : id = id ?? newId(),
         motion = motion ?? Motion(),
         grade = grade ?? ColorGrade(),
@@ -239,6 +241,7 @@ class VisualClip {
         'animOutDur': animOutDur,
         'vfx': vfx,
         'loopVideo': loopVideo,
+        if (label.isNotEmpty) 'label': label,
       };
 
   factory VisualClip.fromJson(Map<String, dynamic> j, {bool newIdentity = false}) {
@@ -274,6 +277,7 @@ class VisualClip {
       animOutDur: jd(j['animOutDur'], 0.5),
       vfx: (j['vfx'] as List?)?.map((e) => '$e').toList() ?? [],
       loopVideo: jb(j['loopVideo']),
+      label: js(j['label']),
     );
   }
 

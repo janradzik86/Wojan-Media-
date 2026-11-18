@@ -57,7 +57,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
             child: ListTile(
               leading: CircleAvatar(backgroundColor: Color(int.parse('FF${t.accentColor.substring(1)}', radix: 16)), child: Text(t.name.characters.first)),
               title: Text(t.name + (t.builtIn ? '' : '  ★')),
-              subtitle: Text('${t.font} • cięcie co ${t.cutEveryBeats} bitów • ${t.transitions.map((x) => transitionNames[x] ?? x).join(', ')} • efekty: ${t.vfx.map((x) => vfxNames[x] ?? x).join(', ')}', maxLines: 2, overflow: TextOverflow.ellipsis),
+              subtitle: Text('${t.font} • cięcie co ${t.cutEveryBeats} bitów • ${t.transitions.map((x) => transitionNames[x] ?? x).join(', ')} • efekty: ${t.vfx.map((x) => allVfxNames[x] ?? x).join(', ')}', maxLines: 2, overflow: TextOverflow.ellipsis),
               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                 IconButton(tooltip: 'Duplikuj', icon: const Icon(Icons.copy), onPressed: () => _save(t.copyAs(const Uuid().v4(), '${t.name} (moja wersja)'))),
                 if (!t.builtIn) IconButton(tooltip: 'Edytuj', icon: const Icon(Icons.edit), onPressed: () => _edit(t)),
@@ -111,7 +111,7 @@ class _TemplateEditorState extends State<_TemplateEditor> {
             Wrap(spacing: 4, runSpacing: 4, children: [for (final m in MotionPreset.values.where((m) => m != MotionPreset.none)) FilterChip(label: Text(motionNames[m]!, style: const TextStyle(fontSize: 11)), selected: s.motions.contains(m.name), onSelected: (v) => setState(() => s.motions = v ? [...s.motions, m.name] : (s.motions.length > 1 ? (List.of(s.motions)..remove(m.name)) : s.motions)))]),
           ]),
           Section(title: 'Efekty i kolor', children: [
-            Wrap(spacing: 4, runSpacing: 4, children: [for (final e in vfxNames.entries) FilterChip(label: Text(e.value, style: const TextStyle(fontSize: 11)), selected: s.vfx.contains(e.key), onSelected: (v) => setState(() => s.vfx = v ? [...s.vfx, e.key] : (List.of(s.vfx)..remove(e.key))))]),
+            Wrap(spacing: 4, runSpacing: 4, children: [for (final e in allVfxNames.entries) FilterChip(label: Text(e.value, style: const TextStyle(fontSize: 11)), selected: s.vfx.contains(e.key), onSelected: (v) => setState(() => s.vfx = v ? [...s.vfx, e.key] : (List.of(s.vfx)..remove(e.key))))]),
             SwitchListTile(value: s.reactiveVfx, onChanged: (v) => setState(() => s.reactiveVfx = v), title: const Text('Efekty reagują na muzykę')),
             DropdownButton<String>(value: s.grade, items: [const DropdownMenuItem(value: '', child: Text('Bez filtra')), for (final e in lookNames.entries) DropdownMenuItem(value: e.key, child: Text(e.value))], onChanged: (v) => setState(() => s.grade = v!)),
             DropdownButton<String>(value: s.visualizer, items: [for (final e in visualizerNames.entries) DropdownMenuItem(value: e.key, child: Text(e.value))], onChanged: (v) => setState(() => s.visualizer = v!)),

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart' hide AudioTrack;
@@ -17,6 +16,7 @@ import '../../engine/export/audio_formats.dart';
 import '../../engine/project/asset.dart';
 import '../../engine/util/hash.dart';
 import '../../engine/video/model.dart';
+import 'fx_painters.dart';
 
 class VideoSlot {
   final Player player;
@@ -29,17 +29,21 @@ class VideoSlot {
 /// Real-time preview clock and media sources (FotoPlay-style live preview).
 /// The timeline is drawn by Flutter every frame; the audio mix is the same
 /// AudioProject the exporter uses (rendered once to a cached file).
-class PreviewController extends ChangeNotifier {
-  VideoProject project;
+class PreviewController extends ChangeNotifier implements FxSource {
+  VideoProject _project;
   final AssetResolver assets;
+  @override
   AudioAnalysis? music;
+  @override
   double musicOffset;
+  Timer? _audioDebounce;
   double _pos = 0;
   bool _playing = false;
   final Player audio = Player();
   bool audioReady = false;
   String? audioError;
   String? _audioKey;
+  String? _pcmKey;
   Duration _lastAudioPos = Duration.zero;
   DateTime _lastAudioStamp = DateTime.now();
   DateTime _lastTick = DateTime.now();
@@ -49,7 +53,7 @@ class PreviewController extends ChangeNotifier {
   final Map<String, VideoSlot> _videos = {};
   List<double> _starts = [];
 
-  PreviewController({required this.project, required this.assets, this.music, this.musicOffset = 0}) {
+  PreviewController({required VideoProject project, required this.assets, this.music, this.musicOffset = 0}) : _project = project {
     _starts = project.clipStarts();
     _posSub = audio.stream.position.listen((d) {
       _lastAudioPos = d;
@@ -63,8 +67,12 @@ class PreviewController extends ChangeNotifier {
     });
   }
 
+  @override
+  VideoProject get project => _project;
+  set project(VideoProject v) => _project = v;
   double get position => _pos;
   bool get playing => _playing;
+  @override
   double get duration => project.duration;
   List<double> get starts => _starts;
 
@@ -73,7 +81,8 @@ class PreviewController extends ChangeNotifier {
     project = p;
     _starts = p.clipStarts();
     if (_pos > duration) _pos = duration;
-    prepareAudio();
+    _audioDebounce?.cancel();
+    _audioDebounce = Timer(const Duration(milliseconds: 500), prepareAudio);
     notifyListeners();
   }
 
@@ -106,9 +115,12 @@ class PreviewController extends ChangeNotifier {
       audioReady = true;
       audioError = null;
       // live spectrum source: decode main music once
-      if (pcm == null && project.musicAssetId != null) {
+      if (_pcmKey != key) {
         final p = await PcmDecoder(Services.i.runner, Directory('${Services.i.store.cacheDir.path}/pcm')).decode(f.path, sampleRate: 22050);
-        pcm = p;
+        if (key == _audioKey) {
+          pcm = p;
+          _pcmKey = key;
+        }
       }
     } catch (e) {
       audioError = '$e';
@@ -250,12 +262,15 @@ class PreviewController extends ChangeNotifier {
     return out;
   }
 
+  @override
   double bassAt(double t) => music == null ? 0 : music!.valueAt(music!.bass, t - musicOffset);
+  @override
   double energyAt(double t) => music == null ? 0 : music!.valueAt(music!.rms, t - musicOffset);
 
   @override
   void dispose() {
     _posSub?.cancel();
+    _audioDebounce?.cancel();
     audio.dispose();
     for (final v in _videos.values) {
       v.player.dispose();

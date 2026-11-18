@@ -531,7 +531,7 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
                 lane('Nakładki', [for (var i = 0; i < p.overlays.length; i++) (p.overlays[i].start, p.overlays[i].end, p.overlays[i].name, () => setState(() => {selKind = _SelKind.overlay, sel = i}), selKind == _SelKind.overlay && sel == i)]),
                 lane('Teksty', [for (var i = 0; i < p.texts.length; i++) (p.texts[i].start, p.texts[i].end, p.texts[i].text, () => setState(() => {selKind = _SelKind.text, sel = i}), selKind == _SelKind.text && sel == i)], color: WmsColors.warn),
                 lane('Efekty', [
-                  for (var i = 0; i < p.vfx.length; i++) (p.vfx[i].start, p.vfx[i].duration > 0 ? p.vfx[i].start + p.vfx[i].duration : total, vfxNames[p.vfx[i].type] ?? p.vfx[i].type, () => setState(() => {selKind = _SelKind.vfx, sel = i}), selKind == _SelKind.vfx && sel == i),
+                  for (var i = 0; i < p.vfx.length; i++) (p.vfx[i].start, p.vfx[i].duration > 0 ? p.vfx[i].start + p.vfx[i].duration : total, allVfxNames[p.vfx[i].type] ?? p.vfx[i].type, () => setState(() => {selKind = _SelKind.vfx, sel = i}), selKind == _SelKind.vfx && sel == i),
                   for (var i = 0; i < p.visualizers.length; i++) (p.visualizers[i].start, p.visualizers[i].duration > 0 ? p.visualizers[i].start + p.visualizers[i].duration : total, visualizerNames[p.visualizers[i].style] ?? '', () => setState(() => {selKind = _SelKind.vis, sel = i}), selKind == _SelKind.vis && sel == i),
                 ], color: const Color(0xFF8A5CFF)),
                 lane('Audio', [
@@ -875,7 +875,7 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
   }
 
   Widget _vfxProps(VfxItem v) => Section(title: 'Efekt wizualny', children: [
-        Wrap(spacing: 4, runSpacing: 4, children: [for (final e in vfxNames.entries) ChoiceChip(label: Text(e.value, style: const TextStyle(fontSize: 11)), selected: v.type == e.key, onSelected: (_) => _edit(() => v.type = e.key))]),
+        Wrap(spacing: 4, runSpacing: 4, children: [for (final e in allVfxNames.entries) ChoiceChip(label: Text(e.value, style: const TextStyle(fontSize: 11)), selected: v.type == e.key, onSelected: (_) => _edit(() => v.type = e.key))]),
         SwitchListTile(contentPadding: EdgeInsets.zero, value: v.duration <= 0, title: const Text('Przez cały film'), onChanged: (b) => _edit(() => v.duration = b ? 0 : 3)),
         if (v.duration > 0) _timeFields(v.start, v.duration, (s, d) => {v.start = s, v.duration = d}),
         LabeledSlider(label: 'Intensywność', value: v.intensity, min: 0, max: 1, decimals: 2, onChanged: (x) => setState(() => v.intensity = x)),

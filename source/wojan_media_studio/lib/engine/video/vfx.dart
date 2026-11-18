@@ -6,6 +6,7 @@ import '../dsp/analysis.dart';
 import '../ffmpeg/escape.dart';
 import '../util/json_util.dart';
 import 'model.dart';
+import 'vfx_library.dart';
 
 /// Catalogue of visual effects. All are procedurally generated with FFmpeg
 /// filters (no third-party licensed assets).
@@ -40,8 +41,11 @@ const vfxNames = <String, String>{
   'pixelate': 'Pikselizacja',
 };
 
+/// Every effect: procedural FFmpeg effects + the texture/impact library.
+final allVfxNames = <String, String>{...vfxNames, ...vfxLibraryNames};
+
 /// Effects that react to the music signal when `reactive` is set.
-const reactiveCapable = {'snow', 'sparks', 'particles', 'dust', 'ash', 'rain', 'lightning', 'lights', 'flare', 'glitch', 'beatflash', 'bassglow', 'neon', 'rgbsplit', 'frame'};
+const reactiveCapable = {'tex_hearts_red', 'tex_sparkles', 'tex_stars_gold', 'tex_confetti', 'tex_notes', 'tex_bokeh', 'tex_gold_dust', 'snow', 'sparks', 'particles', 'dust', 'ash', 'rain', 'lightning', 'lights', 'flare', 'glitch', 'beatflash', 'bassglow', 'neon', 'rgbsplit', 'frame'};
 
 class VfxContext {
   final AudioGraphBuilder b;
@@ -168,6 +172,8 @@ String _timesEnable(List<double> ts, double len) {
 
 /// Applies one VFX item to the [base] video label; returns new label.
 String applyVfx(VfxContext x, String base, VfxItem it) {
+  final lib = applyLibraryVfx(x, base, it);
+  if (lib != null) return lib;
   final i = it.intensity.clamp(0.0, 1.0);
   final react = it.reactive && x.music != null;
   (String, String)? aaCmd(double baseOp, {bool useBeats = false}) {
