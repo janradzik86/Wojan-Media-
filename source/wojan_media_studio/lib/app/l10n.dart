@@ -1,0 +1,97 @@
+import 'package:flutter/foundation.dart';
+
+/// Simple runtime localisation (Polish default, English available).
+class L10n extends ChangeNotifier {
+  String lang = 'pl';
+  void setLang(String l) {
+    lang = l;
+    notifyListeners();
+  }
+
+  String t(String key) => (lang == 'en' ? _en[key] : null) ?? _pl[key] ?? key;
+
+  static const _pl = <String, String>{
+    'app': 'WoJan Media Studio',
+    'm.projects': 'Centrum projektów',
+    'm.audio': 'Studio Audio',
+    'm.video': 'Studio Wideo',
+    'm.quick': 'Szybki Teledysk',
+    'm.lyric': 'Lyric Video',
+    'm.karaoke': 'Karaoke',
+    'm.visualizer': 'Wizualizator muzyczny',
+    'm.converter': 'Konwerter multimediów',
+    'm.library': 'Biblioteka materiałów',
+    'm.templates': 'Szablony',
+    'm.batch': 'Produkcja wsadowa',
+    'm.queue': 'Kolejka renderowania',
+    'm.publisher': 'Social Publisher',
+    'm.history': 'Historia publikacji',
+    'm.sync': 'Synchronizacja',
+    'm.settings': 'Ustawienia',
+    'import': 'Importuj',
+    'export': 'Eksportuj',
+    'save': 'Zapisz',
+    'cancel': 'Anuluj',
+    'delete': 'Usuń',
+    'render': 'Renderuj',
+    'preview': 'Podgląd',
+    'undo': 'Cofnij',
+    'redo': 'Ponów',
+    'search': 'Szukaj',
+    'new_project': 'Nowy projekt',
+    'play': 'Odtwórz',
+    'share': 'Udostępnij',
+    'publish': 'Opublikuj',
+    'open_folder': 'Otwórz folder',
+    'copy_desc': 'Kopiuj opis',
+    'copy_tags': 'Kopiuj hashtagi',
+    'back_to_project': 'Wróć do projektu',
+    'new_version': 'Utwórz kolejną wersję',
+    'save_device': 'Zapisz na urządzeniu',
+    'schedule': 'Zaplanuj publikację',
+    'simple_mode': 'Tryb prosty',
+    'pro_mode': 'Tryb profesjonalny',
+  };
+
+  static const _en = <String, String>{
+    'm.projects': 'Project hub',
+    'm.audio': 'Audio Studio',
+    'm.video': 'Video Studio',
+    'm.quick': 'Quick Music Video',
+    'm.lyric': 'Lyric Video',
+    'm.karaoke': 'Karaoke',
+    'm.visualizer': 'Music visualizer',
+    'm.converter': 'Media converter',
+    'm.library': 'Media library',
+    'm.templates': 'Templates',
+    'm.batch': 'Batch production',
+    'm.queue': 'Render queue',
+    'm.publisher': 'Social Publisher',
+    'm.history': 'Publishing history',
+    'm.sync': 'Sync',
+    'm.settings': 'Settings',
+    'import': 'Import',
+    'export': 'Export',
+    'save': 'Save',
+    'cancel': 'Cancel',
+    'delete': 'Delete',
+    'render': 'Render',
+    'preview': 'Preview',
+    'undo': 'Undo',
+    'redo': 'Redo',
+    'search': 'Search',
+    'new_project': 'New project',
+    'play': 'Play',
+    'share': 'Share',
+    'publish': 'Publish',
+    'open_folder': 'Open folder',
+    'copy_desc': 'Copy description',
+    'copy_tags': 'Copy hashtags',
+    'back_to_project': 'Back to project',
+    'new_version': 'Create another version',
+    'save_device': 'Save to device',
+    'schedule': 'Schedule',
+    'simple_mode': 'Simple mode',
+    'pro_mode': 'Pro mode',
+  };
+}
