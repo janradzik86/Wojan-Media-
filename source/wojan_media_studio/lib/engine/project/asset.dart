@@ -12,6 +12,7 @@ class MediaAsset {
   int size;
   double duration;
   int? width, height;
+  bool hasAudio;
   /// Path relative to the project's media folder once imported, e.g.
   /// `media/ab12…cd.mp3`. Local-only absolute path cache is kept separately.
   String relPath;
@@ -29,6 +30,7 @@ class MediaAsset {
     this.width,
     this.height,
     this.localPath,
+    this.hasAudio = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -40,6 +42,7 @@ class MediaAsset {
         'duration': duration,
         'width': width,
         'height': height,
+        'hasAudio': hasAudio,
         'relPath': relPath,
       };
 
@@ -53,6 +56,7 @@ class MediaAsset {
         width: j['width'] == null ? null : ji(j['width']),
         height: j['height'] == null ? null : ji(j['height']),
         relPath: js(j['relPath']),
+        hasAudio: jb(j['hasAudio']),
       );
 }
 
