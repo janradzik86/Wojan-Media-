@@ -29,7 +29,7 @@ import 'l10n.dart';
 import '../engine/video/vfx_library.dart';
 import '../ui/preview/text_layer.dart';
 
-const appVersion = String.fromEnvironment('WMS_VERSION', defaultValue: '1.0.3');
+const appVersion = String.fromEnvironment('WMS_VERSION', defaultValue: '1.0.4');
 
 /// Application-wide settings (persisted, synchronised as KV doc).
 class AppSettings extends ChangeNotifier {

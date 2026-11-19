@@ -98,13 +98,17 @@ extension _EditorTools on _VideoStudioScreenState {
               toast(context, 'Ustaw głowicę wewnątrz klipu (min. 0,1 s od krawędzi).');
               return;
             }
-            _refresh(() => p.splitClip(i, rel));
+            _refresh(() => p.splitClip(i, rel)); // split keeps the total length
           }),
-          act(Icons.copy, 'Duplikuj', () => _refresh(() => p.duplicateClip(i))),
+          act(Icons.copy, 'Duplikuj', () => _refresh(() {
+                p.duplicateClip(i);
+                _refitAudio();
+              })),
           act(Icons.delete_outline, 'Usuń', () {
             _refresh(() {
               p.clips.removeAt(i);
               sel = -1;
+              _refitAudio();
             });
             Navigator.pop(ctx);
           }),
@@ -115,7 +119,7 @@ extension _EditorTools on _VideoStudioScreenState {
           if (i < p.clips.length - 1) act(Icons.arrow_forward, 'Przesuń w prawo', () => _refresh(() => p.moveClip(i, i + 1))),
         ]),
         const SizedBox(height: 8),
-        if (c.kind != ClipKind.video) LabeledSlider(label: 'Czas trwania', value: c.imageDuration.clamp(0.3, 60), min: 0.3, max: 60, unit: 's', decimals: 1, onChanged: (v) => _refresh(() => c.imageDuration = v)),
+        if (c.kind != ClipKind.video) LabeledSlider(label: 'Czas trwania', value: c.imageDuration, min: 0.3, max: math.max(60.0, math.max(p.audioDuration, c.imageDuration)), unit: 's', decimals: 1, onChanged: (v) => _refresh(() => c.imageDuration = v)),
         if (c.kind == ClipKind.video) ...[
           LabeledSlider(label: 'Prędkość', value: c.speed, min: 0.25, max: 4, unit: '×', decimals: 2, onChanged: (v) => _refresh(() => c.speed = v)),
           Wrap(spacing: 6, children: [

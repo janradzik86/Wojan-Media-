@@ -644,6 +644,9 @@ class VideoProject {
   List<double> beatMarkers; // manual or analysed beats
   ColorGrade globalGrade;
   double? fixedDuration; // when set, output is padded/trimmed to this
+  /// "Dostosuj do długości audio" is active: adding/removing photos keeps
+  /// the film exactly as long as the audio.
+  bool fitAudio;
 
   VideoProject({
     this.width = 1080,
@@ -663,6 +666,7 @@ class VideoProject {
     List<double>? beatMarkers,
     ColorGrade? globalGrade,
     this.fixedDuration,
+    this.fitAudio = false,
   })  : clips = clips ?? [],
         overlays = overlays ?? [],
         texts = texts ?? [],
@@ -733,6 +737,7 @@ class VideoProject {
         'beatMarkers': beatMarkers,
         'globalGrade': globalGrade.toJson(),
         'fixedDuration': fixedDuration,
+        if (fitAudio) 'fitAudio': true,
       };
 
   factory VideoProject.fromJson(Map<String, dynamic> j) => VideoProject(
@@ -753,6 +758,7 @@ class VideoProject {
         beatMarkers: (j['beatMarkers'] as List?)?.map((e) => jd(e)).toList() ?? [],
         globalGrade: ColorGrade.fromJson(jm(j['globalGrade'])),
         fixedDuration: j['fixedDuration'] == null ? null : jd(j['fixedDuration']),
+        fitAudio: jb(j['fitAudio']),
       );
 
   // --------------------------------------------------------------- editing
@@ -811,7 +817,7 @@ class VideoProject {
     final t = target ?? audioDuration;
     if (t <= 0 || clips.isEmpty) return false;
     for (final c in clips) {
-      if (c.fit == FitMode.stretch) c.fit = fit;
+      if (c.fit == FitMode.stretch) c.fit = fit; // never distort the picture
     }
     double transitions() {
       var s = 0.0;
@@ -821,14 +827,17 @@ class VideoProject {
       return s;
     }
 
+    // Only the DISPLAY TIME of photos changes – longer when the audio is
+    // longer, shorter when there are more photos than the audio can hold.
+    // Video clips keep their length; the film never runs past the audio.
     final images = clips.where((c) => c.kind != ClipKind.video).toList();
     final videoLen = clips.where((c) => c.kind == ClipKind.video).fold(0.0, (s, c) => s + c.duration);
     if (images.isNotEmpty) {
-      // iterate: transition lengths depend on clip lengths
-      for (var k = 0; k < 4; k++) {
+      for (var k = 0; k < 6; k++) {
         final imgLen = images.fold(0.0, (s, c) => s + c.imageDuration);
         final need = t + transitions() - videoLen;
-        if (need <= 0.1 * images.length || imgLen <= 0) break;
+        if (imgLen <= 0 || need <= 0) break;
+        if ((need - imgLen).abs() < 1e-6) break;
         final f = need / imgLen;
         for (final c in images) {
           c.imageDuration = (c.imageDuration * f).clamp(0.3, 36000.0);
@@ -839,11 +848,15 @@ class VideoProject {
       last.loopVideo = true;
       last.imageDuration = last.duration + (t - visualDuration);
     }
-    // Long single shots: keep camera motion gentle over the whole song.
+    // A long still is simply shown – no slow zoom over the whole song (that
+    // looked like the picture was being stretched to the audio length).
     for (final c in images) {
-      if (c.imageDuration > 20 && c.motion.intensity > 0.35) c.motion.intensity = 0.35;
+      if (c.imageDuration > 12 && c.motion.preset != MotionPreset.none && c.motion.preset != MotionPreset.beatPulse && !c.motion.hasKeyframes) {
+        c.motion = Motion(preset: MotionPreset.none);
+      }
     }
-    fixedDuration = t;
+    fixedDuration = t; // anything longer than the audio is cut at its end
+    fitAudio = true;
     return true;
   }
 

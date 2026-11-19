@@ -188,7 +188,8 @@ class MusicVideoGenerator {
     final singleStill = visuals.length == 1 && visuals.first.kind != MediaKind.video &&
         !{MusicVideoMode.staticCover, MusicVideoMode.animatedCover, MusicVideoMode.visualizer}.contains(r.mode);
     if (singleStill) {
-      final c = clipFor(visuals.first, timelineEnd, 0, motion: st.beatPulse || r.mode == MusicVideoMode.beatSync ? MotionPreset.beatPulse : MotionPreset.kenBurnsIn);
+      // shown as-is for the whole song (optionally a light pulse on the beat)
+      final c = clipFor(visuals.first, timelineEnd, 0, motion: st.beatPulse || r.mode == MusicVideoMode.beatSync ? MotionPreset.beatPulse : MotionPreset.none);
       c.fit = FitMode.blurBackground;
       c.motion.intensity = 0.35;
       c.animIn = 'fade';

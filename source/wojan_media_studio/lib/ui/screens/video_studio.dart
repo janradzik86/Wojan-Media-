@@ -189,7 +189,9 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
       }
       selKind = _SelKind.clip;
       sel = p.clips.length - 1;
+      _refitAudio();
     });
+    if (p.fitAudio && mounted) toast(context, 'Zdjęcia zmieszczono w długości audio (${fmtTime(p.duration)}).');
   }
 
   FitMode _autoFit(MediaAsset a) {
@@ -212,10 +214,19 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
       p.musicAssetId = m.id;
     });
     _loadMusic();
-    // One photo (or only photos) + music → film lasts as long as the song.
-    if (p.clips.isNotEmpty && p.clips.every((c) => c.kind != ClipKind.video) && (p.clips.length == 1 || p.visualDuration < p.audioDuration)) {
-      await _fitToAudio(ask: false);
+    // Photos + music → the film lasts exactly as long as the song: photos
+    // are shown longer (or shorter, when there are many) – never stretched.
+    if (p.clips.isNotEmpty) {
+      _edit(() => p.fitToAudio());
+      if (mounted) toast(context, 'Czas wyświetlania dopasowano do długości audio (${fmtTime(p.duration)}).');
     }
+  }
+
+  /// Keeps "Dostosuj do długości audio" in force after photos are added or
+  /// removed: the others get shorter/longer, the film never exceeds the audio.
+  void _refitAudio() {
+    if (!p.fitAudio || p.audioDuration <= 0 || p.clips.isEmpty) return;
+    p.fitToAudio();
   }
 
   Future<void> _addOverlay() async {
@@ -378,6 +389,7 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
       switch (selKind) {
         case _SelKind.clip:
           p.clips.removeAt(sel);
+          _refitAudio();
         case _SelKind.overlay:
           p.overlays.removeAt(sel);
         case _SelKind.text:
@@ -399,6 +411,7 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
       switch (selKind) {
         case _SelKind.clip:
           p.duplicateClip(sel);
+          _refitAudio();
         case _SelKind.overlay:
           p.overlays.add(OverlayItem.fromJson(p.overlays[sel].toJson(), newIdentity: true)..start = p.overlays[sel].end);
         case _SelKind.text:
@@ -727,7 +740,7 @@ class _VideoStudioScreenState extends State<VideoStudioScreen> {
     final asset = c.assetId == null ? null : doc!.assets[c.assetId];
     return Column(children: [
       Section(title: asset?.name ?? 'Kolor', children: [
-        if (c.kind != ClipKind.video) LabeledSlider(label: 'Czas trwania', value: c.imageDuration, min: 0.3, max: 30, unit: 's', decimals: 2, onChanged: (v) => setState(() => c.imageDuration = v), onChangeEnd: (_) => dirty = true),
+        if (c.kind != ClipKind.video) LabeledSlider(label: 'Czas trwania', value: c.imageDuration, min: 0.3, max: math.max(30.0, math.max(p.audioDuration, c.imageDuration)), unit: 's', decimals: 2, onChanged: (v) => setState(() => c.imageDuration = v), onChangeEnd: (_) => dirty = true),
         if (c.kind == ClipKind.color) ColorDots(value: c.color, onChanged: (v) => _edit(() => c.color = v)),
         if (c.kind == ClipKind.video) ...[
           LabeledSlider(label: 'Początek', value: c.srcIn, min: 0, max: math.max(0.1, c.srcOut - 0.1), unit: 's', decimals: 2, onChanged: (v) => setState(() => c.srcIn = v)),

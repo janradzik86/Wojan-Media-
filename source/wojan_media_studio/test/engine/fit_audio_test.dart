@@ -80,4 +80,50 @@ void main() {
       expect(v.clips.single.fit, FitMode.blurBackground);
     }
   });
+
+  VisualClip photo(String id, {double d = 3}) => VisualClip(kind: ClipKind.image, assetId: id, imageDuration: d, motion: Motion(preset: MotionPreset.kenBurnsIn), fit: FitMode.blurBackground, transition: Transition(type: 'fade', duration: 0.5));
+
+  test('long still is shown as-is (no zoom over the whole song)', () {
+    final p = withSong()..clips.add(photo('photo'));
+    p.fitToAudio();
+    expect(p.clips.single.motion.isStatic, isTrue, reason: 'display time only – picture not zoomed/stretched');
+    expect(p.fitAudio, isTrue);
+  });
+
+  test('more photos than the song can hold → all shortened, film ends with the audio', () {
+    final song = assets['song']!.duration;
+    final p = withSong();
+    for (var i = 0; i < 20; i++) {
+      p.clips.add(photo(i.isEven ? 'photo' : 'photo2', d: 3)); // 20×3 s ≫ 21 s
+    }
+    expect(p.visualDuration, greaterThan(song + 10));
+    p.fitToAudio();
+    expect(p.visualDuration, closeTo(song, 0.05), reason: 'pictures fill exactly the audio');
+    expect(p.duration, closeTo(song, 0.05));
+    final d0 = p.clips.first.imageDuration;
+    for (final c in p.clips) {
+      expect(c.imageDuration, closeTo(d0, 1e-6), reason: 'equal photos stay equal');
+      expect(c.motion.preset, MotionPreset.kenBurnsIn, reason: 'short shots keep their motion');
+    }
+  });
+
+  test('adding / removing photos after fitting keeps the film = audio length', () {
+    final song = assets['song']!.duration;
+    final p = withSong()..clips.addAll([photo('photo'), photo('photo2')]);
+    p.fitToAudio();
+    expect(p.visualDuration, closeTo(song, 0.05));
+    // add 5 more → the others get shorter, nothing goes past the audio
+    for (var i = 0; i < 5; i++) {
+      p.clips.add(photo('photo'));
+    }
+    p.fitToAudio();
+    expect(p.visualDuration, closeTo(song, 0.05));
+    expect(p.duration, closeTo(song, 0.05));
+    // remove 4 → the remaining get longer and still fill the audio
+    p.clips.removeRange(0, 4);
+    p.fitToAudio();
+    expect(p.visualDuration, closeTo(song, 0.05));
+    // round trip of the flag
+    expect(VideoProject.fromJson(p.toJson()).fitAudio, isTrue);
+  });
 }

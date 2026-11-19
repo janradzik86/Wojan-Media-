@@ -225,8 +225,34 @@ class _Frame extends StatelessWidget {
       gaplessPlayback: true,
       filterQuality: FilterQuality.medium,
     );
-    return _fitWidget(clip, img);
+    // Blurred background exactly like the renderer: quarter resolution,
+    // gblur 12, brightness -0.08, saturation 1.2 – decoded small (cheap on
+    // phones) and blurred with clamped edges (no dark/black borders).
+    Widget? bg;
+    if (clip.fit == FitMode.blurBackground) {
+      final p = c.project;
+      final k = size.width / p.width; // display px per output px
+      final bw = math.max(8, (p.width / 4).round());
+      bg = Image(image: ResizeImage(FileImage(File(path)), width: (bw * 2).clamp(16, 540).toInt(), policy: ResizeImagePolicy.fit, allowUpscaling: false), gaplessPlayback: true, filterQuality: FilterQuality.medium);
+      bg = ImageFiltered(
+        imageFilter: ui.ImageFilter.blur(sigmaX: 48 * k, sigmaY: 48 * k, tileMode: TileMode.clamp),
+        child: ColorFiltered(colorFilter: ColorFilter.matrix(_blurBgMatrix), child: SizedBox.expand(child: FittedBox(fit: BoxFit.cover, clipBehavior: Clip.hardEdge, child: _source(clip, bg)))),
+      );
+      bg = ClipRect(child: bg);
+    }
+    return _fitWidget(clip, img, bg: bg);
   }
+
+  static final List<double> _blurBgMatrix = () {
+    // eq=brightness=-0.08:saturation=1.2
+    const s = 1.2, lr = 0.2126, lg = 0.7152, lb = 0.0722, o = -0.08 * 255;
+    return <double>[
+      lr * (1 - s) + s, lg * (1 - s), lb * (1 - s), 0, o,
+      lr * (1 - s), lg * (1 - s) + s, lb * (1 - s), 0, o,
+      lr * (1 - s), lg * (1 - s), lb * (1 - s) + s, 0, o,
+      0, 0, 0, 1, 0,
+    ];
+  }();
 
   Widget _source(VisualClip clip, Widget w) {
     var x = w;
@@ -240,7 +266,7 @@ class _Frame extends StatelessWidget {
     return x;
   }
 
-  Widget _fitWidget(VisualClip clip, Widget w, {bool isVideo = false}) {
+  Widget _fitWidget(VisualClip clip, Widget w, {bool isVideo = false, Widget? bg}) {
     final src = _source(clip, w);
     switch (clip.fit) {
       case FitMode.cover:
@@ -250,8 +276,15 @@ class _Frame extends StatelessWidget {
       case FitMode.stretch:
         return FittedBox(fit: BoxFit.fill, child: src);
       case FitMode.blurBackground:
+        final k = size.width / c.project.width;
         return Stack(fit: StackFit.expand, children: [
-          ImageFiltered(imageFilter: ImageFilterShim.blur(18), child: ColorFiltered(colorFilter: const ColorFilter.matrix([0.92, 0, 0, 0, -10, 0, 0.92, 0, 0, -10, 0, 0, 0.92, 0, -10, 0, 0, 0, 1, 0]), child: FittedBox(fit: BoxFit.cover, clipBehavior: Clip.hardEdge, child: src))),
+          bg ??
+              ClipRect(
+                child: ImageFiltered(
+                  imageFilter: ui.ImageFilter.blur(sigmaX: 48 * k, sigmaY: 48 * k, tileMode: TileMode.clamp),
+                  child: ColorFiltered(colorFilter: ColorFilter.matrix(_blurBgMatrix), child: SizedBox.expand(child: FittedBox(fit: BoxFit.cover, clipBehavior: Clip.hardEdge, child: src))),
+                ),
+              ),
           FittedBox(fit: BoxFit.contain, child: src),
         ]);
     }
