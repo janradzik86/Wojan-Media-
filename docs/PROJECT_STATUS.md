@@ -1,6 +1,6 @@
 # PROJECT_STATUS – WoJan Media Studio
 
-**Wersja:** 1.0.3 (build 4) • **Aktualizacja:** 2026-11-18 • **Gałąź:** `ccr-752ca9db-2bv10n`
+**Wersja:** 1.0.4 (build 5) • **Aktualizacja:** 2026-11-18 • **Gałąź:** `ccr-752ca9db-2bv10n`
 
 ## Aktualny etap
 Etapy 1–17 wykonane; etap 18 (produkcyjne kompilacje) – **Android ukończony, Windows zablokowany**; etap 19 (test instalatorów na urządzeniach) – niewykonalny w tym środowisku; etap 20 – ten raport.
@@ -13,6 +13,8 @@ Etapy 1–17 wykonane; etap 18 (produkcyjne kompilacje) – **Android ukończony
 * Windows: branding, instalator Inno Setup (skojarzenie .wojanmedia, menu Start, pulpit, deinstalator, ochrona danych), skrypt `scripts/build_windows.ps1`, CI.
 
 ## Ostatni rzeczywisty test
+2026-11-19 (1.0.4): silnik **49/49 PASSED**, test UI PASSED, test dopasowania do audio w podglądzie i eksporcie PASSED.
+
 2026-11-18 (1.0.3): silnik **46/46 PASSED**; zgodność podglądu na żywo z eksportem 68/68 (mediana SSIM 0,979); test UI z odtwarzaniem, biblioteką efektów, intro i wszystkimi narzędziami → PASSED; podgląd projektu 120 ujęć w czasie rzeczywistym. Szczegóły: `docs/TEST_REPORT.md` §0.
 
 Wcześniej: 2026-11-18: `flutter test test/engine -j 1` → **30/30 PASSED**; test integracyjny UI (16 ekranów + generowanie i podgląd teledysku) → **PASSED**. Szczegóły: `docs/TEST_REPORT.md`.
@@ -20,8 +22,8 @@ Wcześniej: 2026-11-18: `flutter test test/engine -j 1` → **30/30 PASSED**; te
 ## Wyniki kompilacji
 | Produkt | Status | Lokalizacja | Rozmiar | SHA-256 |
 |---|---|---|---|---|
-| WoJan-Media-Studio-Release.apk | ✅ 1.0.3 (4), podpisany (v2), zweryfikowany apksigner | `builds/android/` (nie w git – artefakt) | 139979689 B | `780cb6eedc2bc3cdc9d222dd9d0c1a92a2367e1990ea0a738138afa18587bc64` |
-| WoJan-Media-Studio-Source.zip | ✅ (bez sekretów – sprawdzone) | `builds/` | 22388104 B | `dce53fb09f18eaeb92a5f19fdaa22954dc92bc46d4abfe109aadc981c4c3e52e` |
+| WoJan-Media-Studio-Release.apk | ✅ 1.0.4 (5), podpisany (v2), zweryfikowany apksigner | `builds/android/` (nie w git – artefakt) | 139982773 B | `48c3ff79d2648a15ece5e4f276074f80c13fb6c6e2947db773568c906156ca9c` |
+| WoJan-Media-Studio-Source.zip | ✅ (bez sekretów) | `builds/` | 22392884 B | `b17e41ce5e614536111070d18aec576e4119691b9edf681af1f1889f3b67bbd4` |
 | WoJan-Media-Studio-Setup.exe | ❌ ZABLOKOWANY | – | – | – |
 | WoJan-Media-Studio-Portable.zip | ❌ ZABLOKOWANY (j.w.) | – | – | – |
 
